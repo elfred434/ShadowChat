@@ -24,3 +24,9 @@ export async function getRooms(): Promise<Room[]> {
 export async function createRoom(data: {name?:string; is_group: boolean; participant_ids: number[]}): Promise<Room> {
     const response = await api.post<Room>('rooms/', data);    return response.data;
 }
+export async function getOrCreateDM(userId: number): Promise<Room> {
+    const response = await api.post<Room>('rooms/get_or_create_dm/', {
+        user_id: userId,
+    });
+    return response.data;
+}

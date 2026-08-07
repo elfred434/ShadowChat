@@ -1,12 +1,12 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from .models import Room, Message
-from .serializers import UserSerializer, RoomSerializer, MessageSerializer
+from .models import Room, Message, Friendships
+from .serializers import UserSerializer, RoomSerializer, MessageSerializer, FriendshipsSerializer
 from django.contrib.auth import authenticate, login, logout
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
-
+from django.db.models import Q
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all().order_by('username')
@@ -14,8 +14,36 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return User.objects.exclude(id=self.request.user.id).order_by('username')
+        user = self.request.user
 
+        friend_ids = Friendships.objects.filter(
+            Q(sender=user, status='accepted') | Q(receiver=user, status='accepted')
+        ).values_list('sender_id', 'receiver_id')
+
+        friend_flat = set()
+        for s, r in friend_ids:
+            if s != user.id: friend_flat.add(s)
+            if r != user.id: friend_flat.add(r)
+
+        return User.objects.filter(id__in=friend_flat).order_by('username')
+        # return User.objects.exclude(id=self.request.user.id).order_by('username')
+    @action(detail=False, methods=['get'])
+    def search_new_friends(self, request):
+        user = request.user
+        query = request.query_params.get('q', '')
+
+        sent_ids = Friendships.objects.filter(sender=user).values_list('receiver_id', flat=True)
+        received_ids = Friendships.objects.filter(receiver=user).values_list('sender_id', flat=True)
+
+        excuded_ids = list(sent_ids) + list(received_ids) + [user.id]
+
+        new_people = User.objects.exclude(id__in=excuded_ids)
+
+        if query:
+            new_people = new_people.filter(username__icontains=query)
+
+        serializer = self.get_serializer(new_people[:20], many=True)
+        return Response(serializer.data)
 
 class RoomViewSet(viewsets.ModelViewSet):
     serializer_class = RoomSerializer
@@ -27,7 +55,36 @@ class RoomViewSet(viewsets.ModelViewSet):
         room = serializer.save()
         if self.request.user not in room.participants.all():
             room.participants.add(self.request.user)
+    @action(detail=False, methods=['post'])
+    def get_or_create_dm(self, request):
+        other_user_id = request.data.get('user_id')
+        if not other_user_id:
+            return Response({'error': 'L\'identifiant de l\'utilisateur (user_id) est requis.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            other_user = User.objects.get(id=other_user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'Utilisateur introuvable.'}, status=status.HTTP_404_NOT_FOUND)
 
+        if other_user == request.user:
+            return Response({'error': 'Vous ne pouvez pas crééer de discussion privé avec vous même'}, status=status.HTTP_400_BAD_REQUEST)
+
+        existing_room = Room.objects.filter(
+            is_group=False,
+            participants= request.user
+        ).filter(
+            participants=other_user
+        ).first()
+
+        if existing_room:
+            serializer = self.get_serializer(existing_room)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        new_room = Room.objects.create(is_group=False)
+        new_room.participants.add(request.user, other_user)
+
+        serializer = self.get_serializer(new_room)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
 class MessageViewSet(viewsets.ModelViewSet):
 
     serializer_class = MessageSerializer
@@ -78,3 +135,64 @@ def logout_view(request):
 @permission_classes([IsAuthenticated])
 def me_view(request):
     return Response(UserSerializer(request.user).data)
+
+class FriendshipViewSet(viewsets.ModelViewSet):
+    serializer_class = FriendshipsSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        return Friendships.objects.filter(Q(sender=user) | Q(receiver=user))
+
+    @action(detail=False, methods=['post'])
+    def send_request(self, request):
+        receiver_id = request.data.get('receiver_id')
+        if not receiver_id:
+            return Response({'error': 'receiver_id est requise'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            receiver = User.objects.get(id=receiver_id)
+        except User.DoesNotExist:
+            return Response({'error': 'Utilisateur destinataire introuvable'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if receiver == request.user:
+            return Response({'error': 'Vous ne pouvez pas vous ajouter vous-même en ami'}, status=status.HTTP_400_BAD_REQUEST)
+
+        exisisting_friendship = Friendships.objects.filter( 
+            Q(sender=request.user, receiver=receiver) | Q(sender=receiver, receiver=request.user)
+        ).first()
+
+        if exisisting_friendship:
+            return Response({
+                'error': 'Une demande d\'ami existe déjà entre vous',
+                'status': exisisting_friendship.status
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        friendship = Friendships.objects.create(sender= request.user, receiver=receiver, status='pending')
+        serializer= self.get_serializer(friendship)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        friendship= self.get_object()
+
+        if friendship.receiver != request.user:
+            return Response({'error': 'Vous ne pouvez pas accepter une demande que vous n\'avez pas reçus. '}, status=status.HTTP_403_FORBIDDEN)
+        if friendship.status != 'pending':
+            return Response({'error': f"Cette demande est déjà {friendship.get_status_display().lower()}."}, status=status.HTTP_400_BAD_REQUEST)
+
+        friendship.status = 'accepted'
+        friendship.save()
+        return Response({'message': 'Demande d\'ami acceptée !', 'status': 'accepted'})
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        friendship = self.get_object()
+
+        if friendship.sender != request.user and friendship.receiver != request.user:
+            return Response({'error': 'Action non autorisée'}, status=status.HTTP_403_FORBIDDEN)
+
+        friendship.status = 'rejected'
+        friendship.save()
+        return Response({'message': 'Demande d\'ami refusé/annulée', 'status': 'rejected'}) 
