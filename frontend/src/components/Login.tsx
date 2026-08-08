@@ -11,7 +11,7 @@ export function Login(){
 
     const loginMutation = useMutation({
         mutationFn: () => loginUser(username, password),
-        onSuccess: (data) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({queryKey: ['currentUser']});
             navigate({ to: '/'});
         },
