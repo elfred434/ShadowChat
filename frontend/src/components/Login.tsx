@@ -1,5 +1,5 @@
 import React , {useState} from "react";
-import {useNavigate} from '@tanstack/react-router';
+import {useNavigate, Link} from '@tanstack/react-router';
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { loginUser } from "../api/auth";
 export function Login(){
@@ -68,6 +68,12 @@ export function Login(){
                 className="w-full bg-indigo-600  hover:gb-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
                     {loginMutation.isPending ? 'Connexion en cours': 'Se connecter'}
                 </button>
+                <p className="mt-6 text-center text-xs text-gray-500">
+                    Vous n'avez pas de compte ? {''}
+                    <Link to="/register" className="text-indigo-600 hover:underline font-semiblod">
+                        Créer un compte
+                    </Link>
+                </p>
             </form>
         </div>
     )

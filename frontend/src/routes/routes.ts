@@ -3,6 +3,7 @@ import { Layout } from '../components/Layout';
 import {Login} from '../components/Login';
 import {ChatDashboard} from '../components/ChatDashboard';
 import { getCurrentUser } from '../api/auth';
+import { Register } from '../components/Register';
 
 export const rootRoute = createRootRoute({
     component: Layout,
@@ -30,7 +31,13 @@ const loginRoute = createRoute({
     component: Login,
 })
 
-const routeTree = rootRoute.addChildren([indexRoute, loginRoute]);
+export const registerRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/register',
+    component: Register,
+});
+
+const routeTree = rootRoute.addChildren([indexRoute, loginRoute, registerRoute]);
 
 export const router = createRouter({routeTree})
 

@@ -196,3 +196,39 @@ class FriendshipViewSet(viewsets.ModelViewSet):
         friendship.status = 'rejected'
         friendship.save()
         return Response({'message': 'Demande d\'ami refusé/annulée', 'status': 'rejected'}) 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def register_view(request):
+    username = request.data.get('username')
+    email = request.data.get('email', '')
+    password = request.data.get('password')
+    password_confirm = request.data.get('password_confirm')
+
+    if not username or not password:
+        return Response({'error': 'Le nom d\'utilisateur et le mots de passe sont requis.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if len(password) < 6:
+        return Response({'error': 'Le mot de passe doit contenir au moins six caractères'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if password != password_confirm:
+        return Response({'error': 'les mots de passe ne correspondent pas'}, status=status.HTTP_400_BAD_REQUEST)
+    if User.objects.filter(username__iexact=username).exists():
+        return Response({'error': 'Ce nom d\'utilisateur est déjà pris' }, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password
+        )
+
+        login(request, user)
+
+        return Response({
+            'message': 'Utilisateur créé et connecté avec succès',
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({'error': f'Une erreur est survenue lors de l\'inscription : {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    

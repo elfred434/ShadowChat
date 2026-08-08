@@ -18,3 +18,13 @@ export async function loginUser(username: string, password: string): Promise<{us
 export async function logoutUser(): Promise<void> {
     await api.post('auth/logout/');
 }
+
+export async function registerUser(data: {
+    username: string;
+    email?: string;
+    password?: string;
+    password_confirm?: string;
+}): Promise<{user: User; message: string}> {
+    const response = await api.post('auth/register/', data);
+    return response.data;
+}
