@@ -3,6 +3,8 @@ export interface User{
     id: number;
     username: string;
     email: string;
+    is_online: boolean;
+    is_typing_in: number | null;
 }
 
 export async function getCurrentUser(): Promise<User> {
