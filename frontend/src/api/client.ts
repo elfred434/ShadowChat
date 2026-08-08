@@ -12,7 +12,7 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
     const name = 'csrftoken=';
     const decodedCookie = decodeURIComponent(document.cookie);
-    const ca = decodedCookie.split(':');
+    const ca = decodedCookie.split(';');
     let csrftoken = '';
     for (let i = 0; i < ca.length; i++){
         let c = ca[i].trim();

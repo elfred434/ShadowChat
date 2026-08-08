@@ -1,4 +1,3 @@
-// frontend/src/components/ChatDashboard.tsx
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRooms, createRoom } from '../api/room';
@@ -9,6 +8,7 @@ import type { Message } from '../api/message';
 import { getCurrentUser } from '../api/auth';
 import { FriendsManager } from './FriendsManager'; // AJOUT DE L'IMPORT !
 import { MessageSquare, Plus, Users, Hash, Send, UserCheck } from 'lucide-react';
+import { sendHeartbeat } from '../api/auth';
 
 export function ChatDashboard() {
   const queryClient = useQueryClient();
@@ -18,6 +18,23 @@ export function ChatDashboard() {
   const [newRoomName, setNewRoomName] = useState('');
   const [selectedParticipants, setSelectedParticipants] = useState<number[]>([]);
   const [messageText, setMessageText] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+
+  useEffect(() => {
+    if (!messageText.trim()) {
+      setIsTyping(false);
+      return;
+    }
+
+    setIsTyping(true);
+
+    const timer = setTimeout(() => {
+      setIsTyping(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [messageText]);
+
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -26,6 +43,17 @@ export function ChatDashboard() {
     queryFn: getCurrentUser,
   });
 
+  useEffect(() => {
+    if (!currentUser) return;
+
+    sendHeartbeat(isTyping && activeRoom ? activeRoom.id : null).catch(() => { });
+
+    const interval = setInterval(() => {
+      sendHeartbeat(isTyping && activeRoom ? activeRoom.id : null).catch(() => { });
+    }, 5000);
+    return () => clearInterval(interval)
+  }, [currentUser, isTyping, activeRoom]);
+
   const { data: rooms = [], isLoading: loadingRooms } = useQuery({
     queryKey: ['rooms'],
     queryFn: getRooms,
@@ -33,7 +61,6 @@ export function ChatDashboard() {
   });
 
   const { data: messages = [], isLoading: loadingMessages } = useQuery({
-
     queryKey: ['messages', activeRoom?.id],
     queryFn: () => getMessages(activeRoom!.id),
     enabled: !!activeRoom && activeTab === 'chats', // N'exécute que si on est sur l'onglet chat
@@ -113,8 +140,8 @@ export function ChatDashboard() {
           <button
             onClick={() => setActiveTab('chats')}
             className={`py-3 flex items-center justify-center space-x-1.5 transition ${activeTab === 'chats'
-                ? 'border-b-2 border-indigo-600 text-indigo-600 bg-white'
-                : 'text-gray-500 hover:text-gray-800'
+              ? 'border-b-2 border-indigo-600 text-indigo-600 bg-white'
+              : 'text-gray-500 hover:text-gray-800'
               }`}
           >
             <MessageSquare size={16} />
@@ -123,8 +150,8 @@ export function ChatDashboard() {
           <button
             onClick={() => setActiveTab('friends')}
             className={`py-3 flex items-center justify-center space-x-1.5 transition ${activeTab === 'friends'
-                ? 'border-b-2 border-indigo-600 text-indigo-600 bg-white'
-                : 'text-gray-500 hover:text-gray-800'
+              ? 'border-b-2 border-indigo-600 text-indigo-600 bg-white'
+              : 'text-gray-500 hover:text-gray-800'
               }`}
           >
             <UserCheck size={16} />
@@ -156,6 +183,14 @@ export function ChatDashboard() {
               ) : (
                 rooms.map((room) => {
                   const isActive = activeRoom?.id === room.id;
+                  
+                  // On trouve l'autre participant pour un DM privé
+                  const otherParticipant = !room.is_group 
+                    ? room.participants.find((p) => p.id !== currentUser?.id) 
+                    : null;
+                  
+                  const isOnline = otherParticipant?.is_online;
+
                   return (
                     <div
                       key={room.id}
@@ -166,7 +201,14 @@ export function ChatDashboard() {
                         }`}
                     >
                       <div className="flex items-center space-x-3 truncate">
-                        {room.is_group ? <Users size={18} className="text-indigo-500" /> : <MessageSquare size={18} className="text-gray-400" />}
+                        <div className="relative">
+                          {room.is_group ? <Users size={18} className="text-indigo-500" /> : <MessageSquare size={18} className="text-gray-400" />}
+                          
+                          {/* PASTILLE VERTE EN LIGNE */}
+                          {!room.is_group && isOnline && (
+                            <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
+                          )}
+                        </div>
                         <div className="truncate">
                           <p className="text-sm truncate">
                             {room.name || room.participants.filter(p => p.id !== currentUser?.id).map((p) => p.username).join(', ') || 'Discussion privée'}
@@ -250,6 +292,21 @@ export function ChatDashboard() {
               )}
               <div ref={messagesEndRef} />
             </div>
+            {/* Indicateur de saisie en temps réel */}
+            {activeRoom && (() => {
+              const typingUser = activeRoom.participants.find(
+                (p) => p.id !== currentUser?.id && p.is_typing_in === activeRoom.id
+              );
+              if (typingUser) {
+                return (
+                  <div className="px-6 py-2 text-xs text-gray-500 italic bg-gray-50/50 flex items-center space-x-2 animate-pulse">
+                    <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"></span>
+                    <span>{typingUser.username} est en train d'écrire...</span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             {/* Zone d'envoi */}
             <div className="p-4 bg-white border-t border-gray-200">
@@ -317,8 +374,8 @@ export function ChatDashboard() {
                         key={user.id}
                         onClick={() => toggleParticipant(user.id)}
                         className={`flex items-center space-x-3 p-2 rounded-md cursor-pointer transition ${selectedParticipants.includes(user.id)
-                            ? 'bg-indigo-100 text-indigo-900 font-semibold'
-                            : 'hover:bg-gray-200 text-gray-700'
+                          ? 'bg-indigo-100 text-indigo-900 font-semibold'
+                          : 'hover:bg-gray-200 text-gray-700'
                           }`}
                       >
                         <input

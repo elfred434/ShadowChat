@@ -28,3 +28,9 @@ export async function registerUser(data: {
     const response = await api.post('auth/register/', data);
     return response.data;
 }
+
+export async function sendHeartbeat(typinInRoomId: number | null): Promise<void> {
+    await api.post('auth/heartbeat/', {
+        typing_in_room_id : typinInRoomId,
+    });
+}

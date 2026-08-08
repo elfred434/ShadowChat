@@ -49,4 +49,12 @@ class Friendships(models.Model):
     def __str__(self):
         return f"{self.sender.username} -> {self.receiver.username} ({self.get_status_display()})"
     
+class UserStatus(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="status")
+    last_seen = models.DateTimeField(auto_now=True)
+    typing_in = models.ForeignKey(Room, on_delete=models.SET_NULL, null=True, blank=True, related_name="typing_status")
+
+    def __str__(self):
+        return f"{self.user.username} - Actif le : {self.last_seen}"
+
     

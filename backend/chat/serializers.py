@@ -1,11 +1,31 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Room, Message, Friendships
-
+from django.utils import timezone
+import datetime
 class UserSerializer(serializers.ModelSerializer):
+    is_online = serializers.SerializerMethodField()
+    is_typing_in = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ['id', 'username', 'email']
+        fields = ['id', 'username', 'email', 'is_online', 'is_typing_in' ]
+
+    def get_is_online(self, obj):
+        try:
+            user_status = obj.status
+            now = timezone.now()
+            return (now - user_status.last_seen) < datetime.timedelta(seconds=12)
+        except Exception:
+            return False
+
+    def get_is_typing_in(self, obj):
+        try:
+            user_status = obj.status
+            if self.get_is_online(obj) and user_status.typing_in:
+                return user_status.typing_in.id
+        except Exception:
+            pass
+        return None
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)

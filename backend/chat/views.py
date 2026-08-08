@@ -1,7 +1,7 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from .models import Room, Message, Friendships
+from .models import Room, Message, Friendships, UserStatus
 from .serializers import UserSerializer, RoomSerializer, MessageSerializer, FriendshipsSerializer
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.decorators import api_view, permission_classes, authentication_classes, action
@@ -231,4 +231,26 @@ def register_view(request):
         }, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({'error': f'Une erreur est survenue lors de l\'inscription : {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def heartbeat_view(request):
+    typing_in_id = request.data.get('typing_in_room_id')
+
+    user_status, created = UserStatus.objects.get_or_create(user=request.user)
+
+    user_status.save()
+
+    if typing_in_id:
+        try:
+            room = Room.objects.get(id=typing_in_id, participants=request.user)
+            user_status.typing_in = room
+        except Room.DoesNotExist:
+            user_status.typing_in = None
+
+    else:
+        user_status.typing_in = None
+
+    user_status.save()
+    return Response({'status': 'ok'}, status=status.HTTP_200_OK)

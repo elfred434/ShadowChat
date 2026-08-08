@@ -8,34 +8,31 @@ import {
   searchNewFriends,
 } from '../api/friendships';
 import { getCurrentUser } from '../api/auth';
-import { UserPlus, Check, X, Search, Clock, Users, MessageSquare } from 'lucide-react';
-import {getOrCreateDM} from '../api/room';
+import { getOrCreateDM } from '../api/room';
+import { FriendsTable } from './FriendsTable'; // AJOUT DE L'IMPORT
+import { UserPlus, Check, X, Search, Clock, Users } from 'lucide-react';
 
-export function FriendsManager({onStartChat}: {onStartChat: (room: any) => void}) {
+export function FriendsManager({ onStartChat }: { onStartChat: (room: any) => void }) {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 1. Récupérer l'utilisateur connecté
   const { data: currentUser } = useQuery({
     queryKey: ['currentUser'],
     queryFn: getCurrentUser,
   });
 
-  // 2. Charger toutes nos relations d'amitié (toutes les 5s en arrière-plan)
   const { data: friendships = [], isLoading } = useQuery({
     queryKey: ['friendships'],
     queryFn: getFriendships,
     refetchInterval: 5000,
   });
 
-  // 3. Rechercher de nouveaux amis potentiels en fonction de la saisie
   const { data: searchResults = [] } = useQuery({
     queryKey: ['newFriendsSearch', searchQuery],
     queryFn: () => searchNewFriends(searchQuery),
-    enabled: searchQuery.length > 0, // Ne cherche que si l'utilisateur saisit quelque chose
+    enabled: searchQuery.length > 0,
   });
 
-  // 4. Mutation pour envoyer une invitation
   const sendRequestMutation = useMutation({
     mutationFn: sendFriendRequest,
     onSuccess: () => {
@@ -44,17 +41,15 @@ export function FriendsManager({onStartChat}: {onStartChat: (room: any) => void}
     },
   });
 
-  // 5. Mutation pour accepter une demande
   const acceptMutation = useMutation({
     mutationFn: acceptFriendRequest,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['friendships'] });
-      queryClient.invalidateQueries({ queryKey: ['rooms'] }); // Recalcule la liste de chat
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
   });
 
-  // 6. Mutation pour refuser/annuler une demande
   const rejectMutation = useMutation({
     mutationFn: rejectFriendRequest,
     onSuccess: () => {
@@ -62,7 +57,15 @@ export function FriendsManager({onStartChat}: {onStartChat: (room: any) => void}
     },
   });
 
-  // Filtrage des amitiés par statuts
+  // Mutation pour créer/récupérer une conversation DM instantanée (utilisée par notre tableau)
+  const startChatMutation = useMutation({
+    mutationFn: getOrCreateDM,
+    onSuccess: (room) => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      onStartChat(room);
+    },
+  });
+
   const friends = friendships.filter((f) => f.status === 'accepted');
   const receivedRequests = friendships.filter(
     (f) => f.status === 'pending' && f.receiver.id === currentUser?.id
@@ -71,13 +74,6 @@ export function FriendsManager({onStartChat}: {onStartChat: (room: any) => void}
     (f) => f.status === 'pending' && f.sender.id === currentUser?.id
   );
 
-  const startChatMutation = useMutation({
-    mutationFn: getOrCreateDM,
-    onSuccess: (room) => {
-        queryClient.invalidateQueries({queryKey: ['rooms']});
-        onStartChat(room);
-    }
-  })
   return (
     <div className="flex flex-col h-full bg-gray-50 p-6 overflow-y-auto space-y-6">
       <div className="flex items-center space-x-2 border-b border-gray-200 pb-4">
@@ -92,7 +88,6 @@ export function FriendsManager({onStartChat}: {onStartChat: (room: any) => void}
           <span>Ajouter de nouveaux amis</span>
         </h3>
         
-        {/* Barre de recherche */}
         <div className="relative mb-4">
           <input
             type="text"
@@ -104,7 +99,6 @@ export function FriendsManager({onStartChat}: {onStartChat: (room: any) => void}
           <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
         </div>
 
-        {/* Résultats de recherche */}
         {searchQuery && (
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {searchResults.length === 0 ? (
@@ -191,41 +185,28 @@ export function FriendsManager({onStartChat}: {onStartChat: (room: any) => void}
         </div>
       </div>
 
-      {/* SECTION 4 : LISTE D'AMIS ACCEPTÉS */}
+      {/* SECTION 4 : INTEGRATION DU MAGNIFIQUE TABLEAU TANSTACK TABLE ! */}
       <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-      <h3 className="font-semibold text-gray-800 mb-4 flex items-center space-x-1.5 border-b pb-2">
-        <Users size={18} className="text-emerald-500" />
-        <span>Mes Amis ({friends.length})</span>
-      </h3>
-      {isLoading ? (
-        <p className="text-sm text-gray-400 text-center py-4">Chargement...</p>
-      ) : friends.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-4">Vous n'avez pas encore d'amis. Invitez-en pour chatter !</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {friends.map((f) => {
-            const friend = f.sender.id === currentUser?.id ? f.receiver : f.sender;
-            return (
-              <div key={f.id} className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-gray-800 text-sm">{friend.username}</p>
-                  <p className="text-[10px] text-gray-500">Ami depuis le {new Date(f.updated_at).toLocaleDateString()}</p>
-                </div>
-                {/* BOUTON ÉCRIRE UN MESSAGE INSTANTANÉ ! */}
-                <button
-                  onClick={() => startChatMutation.mutate(friend.id)}
-                  disabled={startChatMutation.isPending}
-                  className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition disabled:bg-indigo-400"
-                  title={`Écrire à ${friend.username}`}
-                >
-                  <MessageSquare size={16} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+        <h3 className="font-semibold text-gray-800 mb-4 flex items-center space-x-1.5 border-b pb-2">
+          <Users size={18} className="text-indigo-600" />
+          <span>Annuaire d'Amis Interactif ({friends.length})</span>
+        </h3>
+        
+        {isLoading ? (
+          <p className="text-sm text-gray-400 text-center py-4">Chargement de la liste d'amis...</p>
+        ) : friends.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">
+            Vous n'avez pas encore d'amis acceptés. Utilisez la zone de recherche ci-dessus pour inviter des personnes !
+          </p>
+        ) : (
+          // RENDU DU COMPOSANT TABLEAU
+          <FriendsTable
+            friendships={friends}
+            currentUser={currentUser || null}
+            onStartChat={(friendId) => startChatMutation.mutate(friendId)}
+          />
+        )}
+      </div>
     </div>
   );
 }
