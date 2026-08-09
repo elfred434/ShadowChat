@@ -9,7 +9,7 @@ import { getCurrentUser } from '../api/auth';
 import { FriendsManager } from './FriendsManager'; // AJOUT DE L'IMPORT !
 import { MessageSquare, Plus, Users, Hash, Send, UserCheck } from 'lucide-react';
 import { sendHeartbeat } from '../api/auth';
-
+import { Avatar } from './Avatar';
 export function ChatDashboard() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'chats' | 'friends'>('chats'); // Onglet actif !
@@ -183,12 +183,12 @@ export function ChatDashboard() {
               ) : (
                 rooms.map((room) => {
                   const isActive = activeRoom?.id === room.id;
-                  
+
                   // On trouve l'autre participant pour un DM privé
-                  const otherParticipant = !room.is_group 
-                    ? room.participants.find((p) => p.id !== currentUser?.id) 
+                  const otherParticipant = !room.is_group
+                    ? room.participants.find((p) => p.id !== currentUser?.id)
                     : null;
-                  
+
                   const isOnline = otherParticipant?.is_online;
 
                   return (
@@ -202,20 +202,24 @@ export function ChatDashboard() {
                     >
                       <div className="flex items-center space-x-3 truncate">
                         <div className="relative">
-                          {room.is_group ? <Users size={18} className="text-indigo-500" /> : <MessageSquare size={18} className="text-gray-400" />}
-                          
-                          {/* PASTILLE VERTE EN LIGNE */}
-                          {!room.is_group && isOnline && (
-                            <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
+                          {room.is_group ? (
+                            // Si c'est un groupe, on garde l'icône de groupe ou un avatar fictif
+                            <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center">
+                              <Users size={18} />
+                            </div>
+                          ) : (
+                            // Si c'est une discussion privée (DM), on affiche le magnifique avatar de notre ami !
+                            <Avatar user={otherParticipant || null} size="md" />
                           )}
                         </div>
                         <div className="truncate">
                           <p className="text-sm truncate">
                             {room.name || room.participants.filter(p => p.id !== currentUser?.id).map((p) => p.username).join(', ') || 'Discussion privée'}
                           </p>
-                          {room.last_message && (
-                            <p className="text-xs text-gray-400 truncate font-normal">
-                              {room.last_message.sender.username}: {room.last_message.content}
+                          {/* Petit sous-titre optionnel pour le statut de l'ami */}
+                          {!room.is_group && otherParticipant?.status_text && (
+                            <p className="text-[10px] text-indigo-500 italic truncate font-light">
+                              {otherParticipant.status_text}
                             </p>
                           )}
                         </div>
@@ -251,11 +255,26 @@ export function ChatDashboard() {
           <>
             {/* En-tête du salon */}
             <div className="p-4 bg-white border-b border-gray-200 flex items-center justify-between shadow-sm">
-              <div className="flex items-center space-x-2">
-                <Hash size={20} className="text-indigo-600" />
-                <span className="font-bold text-gray-800">
-                  {activeRoom.name || activeRoom.participants.filter(p => p.id !== currentUser?.id).map((p) => p.username).join(', ')}
-                </span>
+              <div className="flex items-center space-x-3">
+                {!activeRoom.is_group ? (
+                  <Avatar user={activeRoom.participants.find(p => p.id !== currentUser?.id) || null} size="sm" />
+                ) : (
+                  <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center">
+                    <Users size={14} />
+                  </div>
+                )}
+                <div className="flex flex-col">
+                  <span className="font-bold text-gray-800">
+                    {activeRoom.name || activeRoom.participants.filter(p => p.id !== currentUser?.id).map((p) => p.username).join(', ') || 'Discussion privée'}
+                  </span>
+                  {/* Affiche la bio ou le statut de l'ami dans l'en-tête de la conversation */}
+                  {!activeRoom.is_group && (() => {
+                    const friend = activeRoom.participants.find(p => p.id !== currentUser?.id);
+                    return friend?.status_text && (
+                      <span className="text-xs text-indigo-500 italic font-light">{friend.status_text}</span>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
 
@@ -271,23 +290,34 @@ export function ChatDashboard() {
                 messages.map((msg) => {
                   const isMe = msg.sender.id === currentUser?.id;
                   return (
-                    <div
-                      key={msg.id}
-                      className={`flex flex-col max-w-[70%] ${isMe ? 'self-end items-end' : 'self-start items-start'
-                        }`}
-                    >
-                      {!isMe && <span className="text-xs text-gray-500 mb-1 ml-1 font-medium">{msg.sender.username}</span>}
-                      <div
-                        className={`p-3 rounded-2xl shadow-sm text-sm ${isMe ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border'
-                          }`}
-                      >
-                        <p className="break-words">{msg.content}</p>
-                      </div>
-                      <span className="text-[10px] text-gray-400 mt-1 px-1">
-                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  );
+                 <div
+                   key={msg.id}
+                   className={`flex space-x-2.5 max-w-[75%] ${isMe ? 'self-end flex-row-reverse space-x-reverse' : 'self-start'}`}
+                 >
+                   {/* Avatar de l'expéditeur à côté du message (sauf pour nous, ou optionnel pour nous aussi !) */}
+                   <Avatar user={msg.sender} size="sm" />
+
+                   <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                     {!isMe && (
+                       <span className="text-xs text-gray-500 mb-1 ml-1 font-medium">
+                         {msg.sender.username}
+                       </span>
+                     )}
+                     <div
+                       className={`p-3 rounded-2xl shadow-sm text-sm ${
+                         isMe
+                           ? 'bg-indigo-600 text-white rounded-tr-none' // Notre message
+                           : 'bg-white text-gray-800 rounded-tl-none border border-gray-100' // Message de l'ami
+                       }`}
+                     >
+                       <p className="break-words">{msg.content}</p>
+                     </div>
+                     <span className="text-[10px] text-gray-400 mt-1 px-1">
+                       {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                     </span>
+                   </div>
+                 </div>
+               );
                 })
               )}
               <div ref={messagesEndRef} />

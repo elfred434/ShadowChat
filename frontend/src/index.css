@@ -2,11 +2,75 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Petite touche personnalisée pour que l'app prenne toute la hauteur de l'écran */
+/* ==========================================================================
+   STYLE CLASSIQUE INDIGO & ARDOISE DE BASE
+   ========================================================================== */
 html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: #f3f4f6; /* gris clair en fond */
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  background-color: #f1f5f9; /* Gris clair ardoise doux (Slate 100) */
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Sélection de texte douce */
+::selection {
+  background-color: rgba(99, 102, 241, 0.15);
+  color: #4f46e5;
+}
+
+/* ==========================================================================
+   SCROLLBARS FINES ET HARMONIEUSES (STYLE DISCORD/SLACK)
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* Gris doux (Slate 300) */
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* Devient plus sombre au survol (Slate 400) */
+}
+
+/* ==========================================================================
+   OPTIMISATIONS DES COMPOSANTS (SANS TOUCHER AU CODE REACT)
+   ========================================================================== */
+
+/* Ligne d'accentuation violette sur le salon actif */
+.bg-indigo-50 {
+  background-color: #f5f3ff !important; /* Indigo très doux */
+  border-left: 4px solid #4f46e5 !important;
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.05) !important;
+}
+
+/* Transitions globales sur tous les boutons pour un effet qualitatif */
+button, .room-item, a {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Effet de fondu à l'apparition des messages */
+.bg-indigo-600.text-white, .bg-white.text-gray-800, .bg-white.text-gray-700 {
+  animation: messageFadeIn 0.2s ease-out;
+}
+
+@keyframes messageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

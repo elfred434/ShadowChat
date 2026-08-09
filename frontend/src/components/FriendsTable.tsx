@@ -11,7 +11,7 @@ import type { SortingState } from "@tanstack/react-table";
 import { MessageSquare, ArrowUpDown, ArrowUp, ArrowDown, Search } from 'lucide-react';
 import type { User } from '../api/auth';
 import type { Friendship } from '../api/friendships';
-
+import { Avatar } from './Avatar';
 // On définit le type de données que chaque ligne de notre tableau va représenter
 interface FriendRowData {
   friendshipId: number;
@@ -67,18 +67,19 @@ export function FriendsTable({ friendships, currentUser, onStartChat }: FriendsT
       cell: (info) => {
         const row = info.row.original;
         return (
-          <div className="flex items-center space-x-2">
-            {/* Pastille de statut en ligne / hors-ligne */}
-            <span 
-              className={`w-2.5 h-2.5 rounded-full ${
-                row.friend.is_online ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'
-              }`} 
-              title={row.friend.is_online ? 'En ligne' : 'Hors-ligne'}
-            />
-            <span className="font-semibold text-gray-800">{info.getValue()}</span>
+          <div className="flex items-center space-x-3">
+            {/* Remplacement du point par l'Avatar intelligent avec présence intégrée ! */}
+            <Avatar user={row.friend} size="sm" />
+            
+            <div className="flex flex-col">
+              <span className="font-semibold text-gray-800">{info.getValue()}</span>
+              {row.friend.status_text && (
+                <span className="text-xs text-indigo-500 italic font-light">{row.friend.status_text}</span>
+              )}
+            </div>
           </div>
         );
-      },
+      }
     }),
 
     // Colonne 2 : Adresse e-mail

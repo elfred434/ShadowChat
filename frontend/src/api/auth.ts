@@ -5,6 +5,9 @@ export interface User{
     email: string;
     is_online: boolean;
     is_typing_in: number | null;
+    bio?: string;
+    status_text?: string;
+    avatar?: string | null;
 }
 
 export async function getCurrentUser(): Promise<User> {
@@ -35,4 +38,21 @@ export async function sendHeartbeat(typinInRoomId: number | null): Promise<void>
     await api.post('auth/heartbeat/', {
         typing_in_room_id : typinInRoomId,
     });
+}
+
+export async function updateProfile( data: {
+    bio?: string;
+    status_text?: string;
+    avatar?: File | null;
+}): Promise<User> {
+    const formData = new FormData();
+    if (data.bio !== undefined) formData.append('bio', data.bio);
+    if (data.status_text !== undefined) formData.append('status_text', data.status_text);
+    if (data.avatar) formData.append('avatar', data.avatar);
+    const response = await api.patch<User>('auth/profile/update/', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+    return response.data;
 }

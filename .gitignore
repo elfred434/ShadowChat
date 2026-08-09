@@ -10,7 +10,7 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
-
+fonctionnalités.md
 *.log
 media/
 staticfiles/

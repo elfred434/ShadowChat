@@ -1,14 +1,18 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Room, Message, Friendships
+from .models import Room, Message, Friendships, Profile
 from django.utils import timezone
 import datetime
 class UserSerializer(serializers.ModelSerializer):
     is_online = serializers.SerializerMethodField()
     is_typing_in = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
+    bio = serializers.SerializerMethodField()
+    status_text = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'is_online', 'is_typing_in' ]
+        fields = ['id', 'username', 'email', 'is_online', 'is_typing_in',
+                  'avatar', 'bio', 'status_text' ]
 
     def get_is_online(self, obj):
         try:
@@ -26,7 +30,24 @@ class UserSerializer(serializers.ModelSerializer):
         except Exception:
             pass
         return None
+    def get_avatar(self, obj):
+        if hasattr(obj, 'profile') and obj.profile.avatar:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.profile.avatar.url)
+            return f"http://localhost:8000{obj.profile.avatar.url}"
+        return None
 
+    def get_bio(self, obj):
+        if hasattr(obj, 'profile'):
+            return obj.profile.bio
+        return None
+    
+    def get_status_text(self, obj):
+        if hasattr(obj, 'profile'):
+            return obj.profile.status_text
+        return None
+    
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
     # sender_id = serializers.PrimaryKeyRelatedField(
@@ -35,7 +56,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Message
-        fields = ['id', 'room', 'sender', 'sender_id', 'content', 'created_at']
+        fields = ['id', 'room', 'sender',  'content', 'created_at']
         read_only_fields = ['created_at']
 
 class RoomSerializer(serializers.ModelSerializer):
@@ -65,3 +86,4 @@ class FriendshipsSerializer(serializers.ModelSerializer):
         model = Friendships
         fields = ['id', 'sender', 'receiver', 'status', 'created_at', 'updated_at']
         read_only_fields = ['id', 'status', 'created_at', 'updated_at']
+
