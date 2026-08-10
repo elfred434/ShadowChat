@@ -81,4 +81,17 @@ def save_user_profile(sender, instance, **kwargs):
     if not hasattr(instance, 'profile'):
             Profile.objects.create(user=instance)
     instance.profile.save
+
+
+class RoomVisit(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="room_visite")
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="visite")
+    last_visited = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('user', 'room')
+
+    def __str__(self):
+        return f"{self.user.username} - Salon #{self.room.id} visité le {self.last_visited}"
+    
     

@@ -1,14 +1,14 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from .models import Room, Message, Friendships, UserStatus, Profile
+from .models import Room, Message, Friendships, UserStatus, Profile, RoomVisit
 from .serializers import UserSerializer, RoomSerializer, MessageSerializer, FriendshipsSerializer
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.decorators import api_view, permission_classes, authentication_classes, action, parser_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.db.models import Q
 from rest_framework.parsers import MultiPartParser, FormParser
-
+from django.utils import timezone
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all().order_by('username')
     serializer_class = UserSerializer
@@ -85,6 +85,16 @@ class RoomViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(new_room)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    @action(detail=True, methods=['post'])
+    def mark_as_read(self, request, pk=None):
+        room = self.get_object()
+
+        RoomVisit.objects.update_or_create(
+            user = request.user,
+            room = room,
+            defaults={'last_visited': timezone.now()}
+        )
+        return Response({'status': 'read'}, status=status.HTTP_200_OK)
     
 class MessageViewSet(viewsets.ModelViewSet):
 
@@ -94,12 +104,16 @@ class MessageViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset= Message.objects.all()
         room_id = self.request.query_params.get('room_id')
+        search_query = self.request.query_params.get('search')
         if room_id is not None:
             try: 
                 room = Room.objects.get(id= room_id, participants= self.request.user)
                 queryset = queryset.filter(room=room)
             except Room.DoesNotExist:
                 return Message.objects.none()
+        if search_query:
+            queryset = queryset.filter(content__icontains=search_query)
+            
         return queryset
 
     def perform_create(self, serializer):

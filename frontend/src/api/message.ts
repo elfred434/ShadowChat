@@ -9,8 +9,12 @@ export interface Message{
     created_at: string;
 }
 
-export async function getMessages(roomId: number): Promise<Message[]> {
-    const response = await api.get<Message[]>(`messages/?room_id=${roomId}`);
+export async function getMessages(roomId: number, search?:string): Promise<Message[]> {
+    const url = search
+    ? `messages/?room_id=${roomId}&search=${encodeURIComponent(search)}`
+    : `messages/?room_id=${roomId}`;
+    
+    const response = await api.get<Message[]>(url);
     return response.data;
 }
 export async function sendMessages(roomId: number, content: string): Promise<Message> {

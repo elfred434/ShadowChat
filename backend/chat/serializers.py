@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Room, Message, Friendships, Profile
+from .models import Room, Message, Friendships, Profile, RoomVisit
 from django.utils import timezone
 import datetime
 class UserSerializer(serializers.ModelSerializer):
@@ -65,11 +65,11 @@ class RoomSerializer(serializers.ModelSerializer):
         many = True, write_only = True, queryset=User.objects.all(), source='participants'
     )
     last_message = serializers.SerializerMethodField()
-
+    unread_count = serializers.SerializerMethodField()
     class Meta:
         model = Room
         fields = ['id', 'name', 'is_group', 'participants', 'participant_ids', 'last_message',
-                  'created_at', 'updated_at']
+               'unread_count' ,  'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
 
     def get_last_message(self, obj):
@@ -77,6 +77,25 @@ class RoomSerializer(serializers.ModelSerializer):
         if last_msg:
             return MessageSerializer(last_msg).data
         return None
+    def get_unread_count(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return 0
+
+        try:
+            visit = obj.visits.get(user= request.user)
+            last_visited = visit.last_visited
+        except Exception:
+            last_visited = None
+
+        messages = obj.messages.all()
+
+        if last_visited:
+            unread_messages = messages.filter(created_at__gt= last_visited).exclude(sender=request.user)
+        else:
+            unread_messages = messages.exclude(sender=request.user)
+
+        return unread_messages.count()
 
 class FriendshipsSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)

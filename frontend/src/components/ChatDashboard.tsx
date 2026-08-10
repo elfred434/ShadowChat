@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getRooms, createRoom } from '../api/room';
+import { getRooms, createRoom, markRoomAsRead } from '../api/room';
 import type { Room } from '../api/room';
 import { getUsers } from '../api/users';
 import { getMessages, sendMessages } from '../api/message';
 import type { Message } from '../api/message';
 import { getCurrentUser } from '../api/auth';
 import { FriendsManager } from './FriendsManager'; // AJOUT DE L'IMPORT !
-import { MessageSquare, Plus, Users, Hash, Send, UserCheck } from 'lucide-react';
+import { MessageSquare, Plus, Users, Hash, Send, UserCheck, Search, X } from 'lucide-react';
 import { sendHeartbeat } from '../api/auth';
 import { Avatar } from './Avatar';
 export function ChatDashboard() {
@@ -19,7 +19,8 @@ export function ChatDashboard() {
   const [selectedParticipants, setSelectedParticipants] = useState<number[]>([]);
   const [messageText, setMessageText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-
+  const [showSearchBar, setShowSearchBar] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   useEffect(() => {
     if (!messageText.trim()) {
       setIsTyping(false);
@@ -61,10 +62,10 @@ export function ChatDashboard() {
   });
 
   const { data: messages = [], isLoading: loadingMessages } = useQuery({
-    queryKey: ['messages', activeRoom?.id],
-    queryFn: () => getMessages(activeRoom!.id),
+    queryKey: ['messages', activeRoom?.id, searchQuery],
+    queryFn: () => getMessages(activeRoom!.id, searchQuery),
     enabled: !!activeRoom && activeTab === 'chats', // N'exécute que si on est sur l'onglet chat
-    refetchInterval: 2000,
+    refetchInterval: searchQuery ? undefined : 2000,
   });
 
   const { data: users = [] } = useQuery({
@@ -131,6 +132,43 @@ export function ChatDashboard() {
     );
   };
 
+  const markReadMutation = useMutation({
+    mutationFn: markRoomAsRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey: ['rooms']});
+    }
+  });
+  useEffect(() => {
+    if (activeRoom && activeTab === 'chats'){
+      markReadMutation.mutate(activeRoom.id)
+    }
+  }, [activeRoom?.id, activeTab]);
+
+  useEffect(() => {
+    if (activeRoom && messages.length > 0){
+      markRoomAsRead(activeRoom.id).catch(() => {});
+    }
+  }, [messages.length, activeRoom?.id]);
+  function highlightText(text: string, search: string){
+    if(!search.trim()) return text;
+
+    const regex = new RegExp(`(${search})`, 'gi');
+    const parts = text.split(regex);
+    return (
+    <>
+      {parts.map((part, index) => 
+        part.toLowerCase() === search.toLowerCase() ? (
+          <span key={index}
+           className="bg-yellow-200 text-black px-0.5 rounded font-medium animate-pulse">
+            {part}
+          </span>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+  }
   return (
     <div className="flex h-full w-full bg-white relative">
       {/* BARRE LATÉRALE */}
@@ -222,6 +260,11 @@ export function ChatDashboard() {
                               {otherParticipant.status_text}
                             </p>
                           )}
+                          {room.unread_count > 0 && !isActive && (
+                            <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                              {room.unread_count}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -254,7 +297,7 @@ export function ChatDashboard() {
         ) : activeRoom ? (
           <>
             {/* En-tête du salon */}
-            <div className="p-4 bg-white border-b border-gray-200 flex items-center justify-between shadow-sm">
+            <div className="p-4 bg-white border-b border-gray-200 flex items-center justify-between shadow-sm z-10">
               <div className="flex items-center space-x-3">
                 {!activeRoom.is_group ? (
                   <Avatar user={activeRoom.participants.find(p => p.id !== currentUser?.id) || null} size="sm" />
@@ -275,6 +318,45 @@ export function ChatDashboard() {
                     );
                   })()}
                 </div>
+              </div>
+
+              {/* BARRE DE RECHERCHE INTEGRÉE */}
+              <div className="flex items-center space-x-2">
+                {showSearchBar && (
+                  <div className="flex items-center bg-gray-50 border rounded-lg px-2 py-1 relative animate-scale-in">
+                    <input
+                      type="text"
+                      placeholder="Chercher un mot..."
+                      className="bg-transparent text-xs focus:outline-none w-40 pr-6 text-gray-800"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2 text-gray-400 hover:text-gray-600 text-xs"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Bouton Loupe */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSearchBar(!showSearchBar);
+                    if (showSearchBar) setSearchQuery(''); // Réinitialise si on ferme
+                  }}
+                  className={`p-1.5 rounded-lg transition ${
+                    showSearchBar ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                  }`}
+                  title="Rechercher des messages"
+                >
+                  <Search size={18} />
+                </button>
               </div>
             </div>
 
@@ -310,7 +392,7 @@ export function ChatDashboard() {
                            : 'bg-white text-gray-800 rounded-tl-none border border-gray-100' // Message de l'ami
                        }`}
                      >
-                       <p className="break-words">{msg.content}</p>
+                       <p className="break-words">{highlightText(msg.content, searchQuery)}</p>
                      </div>
                      <span className="text-[10px] text-gray-400 mt-1 px-1">
                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

@@ -14,6 +14,7 @@ export interface Room{
     } | null;
     created_at: string;
     updated_at: string;
+    unread_count: number;
 }
 
 export async function getRooms(): Promise<Room[]> {
@@ -29,4 +30,8 @@ export async function getOrCreateDM(userId: number): Promise<Room> {
         user_id: userId,
     });
     return response.data;
+}
+
+export async function markRoomAsRead(roomId: number): Promise<void> {
+    await api.post(`rooms/${roomId}/mark_as_read/`);
 }
