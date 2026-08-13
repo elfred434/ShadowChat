@@ -1,6 +1,13 @@
 node_modules
 dist
+dist-ssr
+.tanstack
+.nitro
+.output
+.vinxi
+*.local
 .env
-.env.*
+.env.*.local
 *.log
-.git
+.cache
+coverage

@@ -1,28 +1,31 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ShadowChat — Tailwind v4 + styles globaux */
+@import 'tailwindcss';
+
+/* Mode sombre piloté par la classe `dark` sur <html> (bouton dans l'en-tête). */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* ==========================================================================
-   STYLE CLASSIQUE INDIGO & ARDOISE DE BASE
+   BASE
    ========================================================================== */
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: #f1f5f9; /* Gris clair ardoise doux (Slate 100) */
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Sélection de texte douce */
 ::selection {
   background-color: rgba(99, 102, 241, 0.15);
   color: #4f46e5;
 }
 
 /* ==========================================================================
-   SCROLLBARS FINES ET HARMONIEUSES (STYLE DISCORD/SLACK)
+   SCROLLBARS FINES (STYLE DISCORD/SLACK)
    ========================================================================== */
 ::-webkit-scrollbar {
   width: 6px;
@@ -34,36 +37,40 @@ html, body, #root {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1; /* Gris doux (Slate 300) */
+  background: #cbd5e1;
   border-radius: 9999px;
   transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8; /* Devient plus sombre au survol (Slate 400) */
+  background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }
 
 /* ==========================================================================
-   OPTIMISATIONS DES COMPOSANTS (SANS TOUCHER AU CODE REACT)
+   OPTIMISATIONS DES COMPOSANTS
    ========================================================================== */
 
-/* Ligne d'accentuation violette sur le salon actif */
+/* Ligne d'accentuation indigo sur le salon actif */
 .bg-indigo-50 {
-  background-color: #f5f3ff !important; /* Indigo très doux */
   border-left: 4px solid #4f46e5 !important;
   box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.05) !important;
 }
 
-/* Transitions globales sur tous les boutons pour un effet qualitatif */
-button, .room-item, a {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+/* Transitions globales sur les boutons */
+button,
+a {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Effet de fondu à l'apparition des messages */
-.bg-indigo-600.text-white, .bg-white.text-gray-800, .bg-white.text-gray-700 {
-  animation: messageFadeIn 0.2s ease-out;
-}
-
 @keyframes messageFadeIn {
   from {
     opacity: 0;
