@@ -11,13 +11,17 @@ import { getCurrentUser } from '../api/auth';
 import { getOrCreateDM } from '../api/room';
 import type { Room } from '../api/room';
 import { FriendsTable } from './FriendsTable'; // AJOUT DE L'IMPORT
+import { ReportDialog } from './ReportDialog';
 import { useUserSocketEvents } from '../hooks/userSocketContext';
 import { blockUser, getBlockedUsers, unblockUser } from '../api/users';
 import { UserPlus, Check, X, Search, Clock, Users, Ban } from 'lucide-react';
+import { useToasts } from '../hooks/useToasts';
 
 export function FriendsManager({ onStartChat }: { onStartChat: (room: Room) => void }) {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
+  const [reportTarget, setReportTarget] = useState<{ id: number; username: string } | null>(null)
+  const { push } = useToasts();
   const { subscribe } = useUserSocketEvents();
 
   // Temps réel : demande d'ami reçue/acceptée/refusée, blocage.
@@ -248,9 +252,23 @@ export function FriendsManager({ onStartChat }: { onStartChat: (room: Room) => v
                 blockMutation.mutate(friendId);
               }
             }}
+            onReport={(friendId, username) => setReportTarget({ id: friendId, username })}
           />
         )}
       </div>
+
+      {reportTarget && (
+        <ReportDialog
+          kind="user"
+          targetId={reportTarget.id}
+          targetLabel={reportTarget.username}
+          onClose={() => setReportTarget(null)}
+          onReported={(message) => {
+            push(message, 'success');
+            setReportTarget(null);
+          }}
+        />
+      )}
 
       {/* SECTION 5 : UTILISATEURS BLOQUÉS */}
       <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">

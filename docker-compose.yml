@@ -66,7 +66,33 @@ services:
       - backend
     restart: unless-stopped
 
+  # Sauvegardes périodiques : docker compose --profile backup up -d backup
+  backup:
+    build:
+      context: ./backend
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apt-get update -qq && apt-get install -y -qq postgresql-client >/dev/null
+        while true; do
+          echo "$$(date) - sauvegarde"
+          MEDIA_DIR=/app/media BACKUP_DIR=/srv/backups /scripts/backup.sh || echo "sauvegarde échouée"
+          sleep "$${BACKUP_INTERVAL:-86400}"
+        done
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-shadowchat}:${DB_PASSWORD:-shadowchat}@db:5432/${DB_NAME:-shadowchat}
+      BACKUP_KEEP: ${BACKUP_KEEP:-14}
+    volumes:
+      - ./scripts:/scripts:ro
+      - media_data:/app/media:ro
+      - backup_data:/srv/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["backup"]
+
 volumes:
   postgres_data:
   media_data:
   static_data:
+  backup_data:

@@ -1,7 +1,7 @@
 # ShadowChat
 
 Application de messagerie privée en temps réel : backend Django REST + Channels
-(WebSockets), frontend React/Vite.
+(WebSockets), frontend **TanStack Start** (React, Tailwind CSS, Vite).
 
 ## Fonctionnalités
 
@@ -17,10 +17,24 @@ Application de messagerie privée en temps réel : backend Django REST + Channel
   d'activité.
 - **Notifications** persistantes : demandes d'amis, mentions, réponses,
   invitations à un groupe.
-- **Confidentialité** : blocage d'utilisateurs, CSRF et sessions durcies,
-  limitation de débit (connexion, inscription, messages, recherche, invitations).
-- **Exploitation** : PostgreSQL + Redis, Docker Compose, CI GitHub Actions,
-  endpoint `/health/`, pagination et requêtes optimisées.
+- **Compte & sécurité** : vérification d'adresse e-mail, réinitialisation de
+  mot de passe par e-mail, changement de mot de passe, authentification à deux
+  facteurs (TOTP), gestion des sessions actives (révocation à distance),
+  blocage d'utilisateurs, signalements avec tableau de modération (admin Django).
+- **Confidentialité** : CSRF et sessions durcies, limitation de débit (connexion,
+  inscription, messages, recherche, invitations, réinitialisation, 2FA,
+  signalements).
+- **Exploitation** : PostgreSQL + Redis, Docker Compose (avec service de
+  sauvegardes), CI GitHub Actions, endpoint `/health/`, Sentry, logs structurés
+  JSON, stockage objet S3/R2/MinIO optionnel.
+
+## Architecture frontend (TanStack Start)
+
+- Routage fichier (`src/routes/`), shell HTML généré par `__root.tsx`,
+  `routeTree.gen.ts`, SPA statique (sortie `dist/client`).
+- TanStack Query (état serveur) + TanStack Table (annuaire d'amis).
+- Client WebSocket (`src/api/ws.ts`) avec reconnexion automatique.
+- Mode sombre (classe `dark` sur `<html>`, préférence persistée).
 
 ## Prérequis
 
@@ -67,9 +81,15 @@ docker compose up --build
 ```
 
 La stack démarre PostgreSQL 16, Redis 7, le backend Django (Daphne, ASGI +
-WebSockets) et le frontend compilé servi par Nginx (proxy `/api`, `/ws`,
-`/admin`, `/health`, fichiers statiques et médias). Le frontend est accessible
-sur le port `FRONTEND_PORT` (8080 par défaut).
+WebSockets) et le frontend TanStack Start compilé servi par Nginx (proxy
+`/api`, `/ws`, `/admin`, `/health`, fichiers statiques et médias). Le frontend
+est accessible sur le port `FRONTEND_PORT` (8080 par défaut).
+
+Sauvegardes périodiques (optionnel) :
+
+```bash
+docker compose --profile backup up -d backup   # pg_dump + médias, rétention 14 j
+```
 
 ## Variables d'environnement
 
@@ -82,12 +102,13 @@ Voir `.env.example` pour la liste complète. Les principales :
 | `DJANGO_ALLOWED_HOSTS` | Liste CSV des hôtes autorisés. |
 | `DATABASE_URL` | URL PostgreSQL (`postgres://user:pass@host/db`). |
 | `REDIS_URL` | URL Redis (cache + canaux WebSocket). |
-| `CORS_ALLOWED_ORIGINS` | Liste CSV des origines frontend autorisées. |
-| `CSRF_TRUSTED_ORIGINS` | Liste CSV des origines approuvées par CSRF. |
+| `CORS_ALLOWED_ORIGINS` / `CSRF_TRUSTED_ORIGINS` | Origines frontend autorisées. |
 | `DJANGO_TRUST_PROXY` | `true` derrière un reverse proxy TLS (Nginx/Traefik). |
-| `DJANGO_MEDIA_ROOT` | Dossier des médias (avatars, pièces jointes). |
+| `STORAGE_BACKEND` + `AWS_*` | Stockage objet : `filesystem`, `s3`, `r2` ou `minio`. |
+| `SENTRY_DSN` | Active Sentry (exceptions + traces). |
+| `DJANGO_LOG_JSON` | Logs structurés JSON (défaut `true` hors debug). |
 | `EMAIL_*` | Configuration SMTP (e-mails transactionnels). |
-| `PUBLIC_SITE_URL` | Origine publique (construction des liens d'invitation). |
+| `PUBLIC_SITE_URL` | Origine publique (liens d'invitation, e-mails). |
 | `VITE_API_URL` / `VITE_WS_URL` | URL publiques de l'API et du WebSocket. |
 
 Les secrets ne doivent jamais être committés. Utiliser un gestionnaire de
@@ -112,7 +133,7 @@ ruff check backend && ruff format --check backend
 .venv/bin/python backend/manage.py test chat
 
 # Frontend
-cd frontend && npm run build && npm run lint
+cd frontend && npm run typecheck && npm run lint && npm run build
 ```
 
 La CI GitHub Actions exécute automatiquement ces vérifications (tests sur
@@ -125,5 +146,7 @@ qui lit ou écrit un salon est limitée à ses participants (membres non bannis)
 les DM ne peuvent être démarrés qu'entre amis acceptés ; les rôles de groupe
 (propriétaire > administrateur > membre) encadrent la gestion ; le blocage
 supprime les amitiés ; la limitation de débit protège connexion, inscription,
-messages, recherches et demandes d'amis ; les pièces jointes sont validées
-(type MIME, extension, taille, intégrité des images).
+messages, recherches, réinitialisation de mot de passe, 2FA et signalements ;
+les pièces jointes sont validées (type MIME, extension, taille, intégrité des
+images) ; la 2FA TOTP renforce la connexion et la rotation du hash de session
+invalide les autres sessions lors d'un changement de mot de passe.

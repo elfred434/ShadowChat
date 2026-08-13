@@ -102,7 +102,7 @@ export function NotificationsPanel() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 w-80 max-h-[70vh] flex flex-col rounded-xl bg-white text-gray-800 shadow-2xl border border-gray-200 z-50">
+        <div className="absolute right-0 top-12 w-80 max-h-[70vh] flex flex-col rounded-xl bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 shadow-2xl border border-gray-200 dark:border-slate-700 z-50">
           <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
             <h2 className="text-sm font-bold">Notifications</h2>
             {unreadCount > 0 && (

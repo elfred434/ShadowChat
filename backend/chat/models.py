@@ -203,6 +203,88 @@ class ActivityLog(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# Sécurité du compte : vérification e-mail, réinitialisation, 2FA
+# ---------------------------------------------------------------------------
+
+
+class EmailVerificationToken(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="email_verification")
+    token = models.UUIDField(default=uuid.uuid4, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Vérification e-mail de {self.user.username}"
+
+
+class PasswordResetToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="password_reset_tokens")
+    token = models.UUIDField(default=uuid.uuid4, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def is_valid(self):
+        return not self.used_at and self.expires_at > timezone.now()
+
+    def __str__(self):
+        return f"Réinitialisation de mot de passe de {self.user.username}"
+
+
+class UserTOTP(models.Model):
+    """Authentification à deux facteurs (TOTP / applications type Google Authenticator)."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="totp")
+    secret = models.CharField(max_length=64)  # clé base32
+    is_enabled = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    enabled_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"2FA de {self.user.username} ({'activée' if self.is_enabled else 'désactivée'})"
+
+
+# ---------------------------------------------------------------------------
+# Signalement / modération
+# ---------------------------------------------------------------------------
+
+
+class Report(models.Model):
+    class Kind(models.TextChoices):
+        USER = "user", "Compte utilisateur"
+        MESSAGE = "message", "Message"
+
+    class Status(models.TextChoices):
+        OPEN = "open", "Ouvert"
+        RESOLVED = "resolved", "Traité"
+        DISMISSED = "dismissed", "Rejeté"
+
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reports")
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    target_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, null=True, blank=True, related_name="reports_against"
+    )
+    target_message = models.ForeignKey(Message, on_delete=models.CASCADE, null=True, blank=True, related_name="reports")
+    reason = models.CharField(max_length=500)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.OPEN, db_index=True)
+    handled_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="handled_reports"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(condition=~Q(reporter=F("target_user")), name="report_not_self"),
+        ]
+
+    def __str__(self):
+        return f"Signalement {self.get_kind_display()} par {self.reporter.username}"
+
+
+# ---------------------------------------------------------------------------
 # Notifications, blocage, amitiés, présence, profils
 # ---------------------------------------------------------------------------
 

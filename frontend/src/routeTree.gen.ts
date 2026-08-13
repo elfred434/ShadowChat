@@ -11,8 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MotDePasseOublieRouteImport } from './routes/mot-de-passe-oublie'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as ReinitialiserTokenRouteImport } from './routes/reinitialiser.$token'
 import { Route as RejoindreTokenRouteImport } from './routes/rejoindre.$token'
+import { Route as VerifierEmailTokenRouteImport } from './routes/verifier-email.$token'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -24,9 +27,19 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MotDePasseOublieRoute = MotDePasseOublieRouteImport.update({
+  id: '/mot-de-passe-oublie',
+  path: '/mot-de-passe-oublie',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReinitialiserTokenRoute = ReinitialiserTokenRouteImport.update({
+  id: '/reinitialiser/$token',
+  path: '/reinitialiser/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RejoindreTokenRoute = RejoindreTokenRouteImport.update({
@@ -34,39 +47,78 @@ const RejoindreTokenRoute = RejoindreTokenRouteImport.update({
   path: '/rejoindre/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VerifierEmailTokenRoute = VerifierEmailTokenRouteImport.update({
+  id: '/verifier-email/$token',
+  path: '/verifier-email/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
   '/register': typeof RegisterRoute
+  '/reinitialiser/$token': typeof ReinitialiserTokenRoute
   '/rejoindre/$token': typeof RejoindreTokenRoute
+  '/verifier-email/$token': typeof VerifierEmailTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
   '/register': typeof RegisterRoute
+  '/reinitialiser/$token': typeof ReinitialiserTokenRoute
   '/rejoindre/$token': typeof RejoindreTokenRoute
+  '/verifier-email/$token': typeof VerifierEmailTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/mot-de-passe-oublie': typeof MotDePasseOublieRoute
   '/register': typeof RegisterRoute
+  '/reinitialiser/$token': typeof ReinitialiserTokenRoute
   '/rejoindre/$token': typeof RejoindreTokenRoute
+  '/verifier-email/$token': typeof VerifierEmailTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/register' | '/rejoindre/$token'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/mot-de-passe-oublie'
+    | '/register'
+    | '/reinitialiser/$token'
+    | '/rejoindre/$token'
+    | '/verifier-email/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/register' | '/rejoindre/$token'
-  id: '__root__' | '/' | '/login' | '/register' | '/rejoindre/$token'
+  to:
+    | '/'
+    | '/login'
+    | '/mot-de-passe-oublie'
+    | '/register'
+    | '/reinitialiser/$token'
+    | '/rejoindre/$token'
+    | '/verifier-email/$token'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/mot-de-passe-oublie'
+    | '/register'
+    | '/reinitialiser/$token'
+    | '/rejoindre/$token'
+    | '/verifier-email/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  MotDePasseOublieRoute: typeof MotDePasseOublieRoute
   RegisterRoute: typeof RegisterRoute
+  ReinitialiserTokenRoute: typeof ReinitialiserTokenRoute
   RejoindreTokenRoute: typeof RejoindreTokenRoute
+  VerifierEmailTokenRoute: typeof VerifierEmailTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -85,11 +137,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mot-de-passe-oublie': {
+      id: '/mot-de-passe-oublie'
+      path: '/mot-de-passe-oublie'
+      fullPath: '/mot-de-passe-oublie'
+      preLoaderRoute: typeof MotDePasseOublieRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register': {
       id: '/register'
       path: '/register'
       fullPath: '/register'
       preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reinitialiser/$token': {
+      id: '/reinitialiser/$token'
+      path: '/reinitialiser/$token'
+      fullPath: '/reinitialiser/$token'
+      preLoaderRoute: typeof ReinitialiserTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rejoindre/$token': {
@@ -99,14 +165,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RejoindreTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/verifier-email/$token': {
+      id: '/verifier-email/$token'
+      path: '/verifier-email/$token'
+      fullPath: '/verifier-email/$token'
+      preLoaderRoute: typeof VerifierEmailTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  MotDePasseOublieRoute: MotDePasseOublieRoute,
   RegisterRoute: RegisterRoute,
+  ReinitialiserTokenRoute: ReinitialiserTokenRoute,
   RejoindreTokenRoute: RejoindreTokenRoute,
+  VerifierEmailTokenRoute: VerifierEmailTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

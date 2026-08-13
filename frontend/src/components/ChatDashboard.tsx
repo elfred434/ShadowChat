@@ -38,6 +38,7 @@ import { useToasts } from '../hooks/useToasts'
 import { FriendsManager } from './FriendsManager'
 import { GroupSettingsModal } from './GroupSettingsModal'
 import { MessageBubble } from './MessageBubble'
+import { ReportDialog } from './ReportDialog'
 import { ToastContainer } from './Toast'
 import { Avatar } from './Avatar'
 
@@ -92,6 +93,7 @@ export function ChatDashboard() {
   const [searchUntil, setSearchUntil] = useState('')
   const [showGroupSettings, setShowGroupSettings] = useState(false)
   const [showRoomMenu, setShowRoomMenu] = useState(false)
+  const [reportTarget, setReportTarget] = useState<Message | null>(null)
   const [typingUsers, setTypingUsers] = useState<Map<number, boolean>>(new Map())
   const [presence, setPresence] = useState<Record<number, boolean>>({})
 
@@ -602,9 +604,9 @@ export function ChatDashboard() {
   const pinnedMessage = activeRoom?.pinned_message ?? null
 
   return (
-    <div className="flex h-full w-full bg-white relative">
+    <div className="flex h-full w-full bg-white dark:bg-slate-900 relative">
       {/* BARRE LATÉRALE */}
-      <div className="w-80 border-r border-gray-200 flex flex-col bg-gray-50 h-full">
+      <div className="w-80 border-r border-gray-200 dark:border-slate-700 flex flex-col bg-gray-50 dark:bg-slate-900 h-full">
         <div className="grid grid-cols-2 border-b border-gray-200 text-center text-sm font-semibold">
           <button
             type="button"
@@ -661,7 +663,7 @@ export function ChatDashboard() {
                       key={room.id}
                       onClick={() => setActiveRoomId(room.id)}
                       className={`w-full flex items-center justify-between p-3 rounded-lg cursor-pointer transition text-left ${
-                        isActive ? 'bg-indigo-50 text-indigo-900 font-semibold' : 'hover:bg-gray-100 text-gray-700'
+                        isActive ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 font-semibold' : 'hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-300'
                       }`}
                     >
                       <div className="flex items-center space-x-3 truncate">
@@ -714,7 +716,7 @@ export function ChatDashboard() {
       </div>
 
       {/* ZONE PRINCIPALE */}
-      <div className="flex-1 flex flex-col h-full bg-gray-100">
+      <div className="flex-1 flex flex-col h-full bg-gray-100 dark:bg-slate-900">
         {activeTab === 'friends' ? (
           <FriendsManager
             onStartChat={(room) => {
@@ -725,7 +727,7 @@ export function ChatDashboard() {
         ) : activeRoom ? (
           <>
             {/* EN-TÊTE DU SALON */}
-            <div className="px-4 py-2.5 bg-white border-b border-gray-200 flex items-center justify-between shadow-sm z-10">
+            <div className="px-4 py-2.5 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between shadow-sm z-10">
               <div className="flex items-center space-x-3 min-w-0">
                 {!activeRoom.is_group ? (
                   <Avatar
@@ -769,11 +771,11 @@ export function ChatDashboard() {
                   </span>
                 )}
                 {showSearchBar && (
-                  <div className="flex items-center bg-gray-50 border rounded-lg px-2 py-1">
+                  <div className="flex items-center bg-gray-50 dark:bg-slate-700 border rounded-lg px-2 py-1">
                     <input
                       type="text"
                       placeholder="Chercher un mot..."
-                      className="bg-transparent text-xs focus:outline-none w-40 pr-6 text-gray-800"
+                      className="bg-transparent text-xs focus:outline-none w-40 pr-6 text-gray-800 dark:text-gray-100"
                       value={searchQuery}
                       onChange={(event) => setSearchQuery(event.target.value)}
                       aria-label="Rechercher dans les messages"
@@ -878,7 +880,7 @@ export function ChatDashboard() {
 
             {/* FILTRES DE RECHERCHE AVANCÉS */}
             {showSearchBar && showSearchFilters && (
-              <div className="px-4 py-2 bg-white border-b border-gray-200 flex flex-wrap items-center gap-2 text-xs z-10">
+              <div className="px-4 py-2 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 flex flex-wrap items-center gap-2 text-xs z-10">
                 <label className="flex items-center gap-1 text-gray-500">
                   Auteur
                   <select
@@ -982,6 +984,7 @@ export function ChatDashboard() {
                       onDelete={(id) => deleteMutation.mutate(id)}
                       onReact={(id, emoji) => reactMutation.mutate({ id, emoji, remove: false })}
                       onPinToggle={(message) => pinMutation.mutate({ id: message.id, pinned: message.is_pinned })}
+                      onReport={setReportTarget}
                     />
                   )
                 })
@@ -990,7 +993,7 @@ export function ChatDashboard() {
             </div>
 
             {/* COMPOSEUR */}
-            <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-gray-200 space-y-2">
+            <form onSubmit={handleSendMessage} className="p-3 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 space-y-2">
               {replyingTo && (
                 <div className="flex items-center gap-2 rounded-lg bg-indigo-50 border border-indigo-100 px-3 py-2 text-xs text-indigo-700">
                   <span className="truncate flex-1">
@@ -1053,7 +1056,7 @@ export function ChatDashboard() {
                   placeholder="Écrivez un message… (Entrée pour envoyer)"
                   rows={1}
                   aria-label="Message"
-                  className="flex-1 resize-none rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 max-h-32"
+                  className="flex-1 resize-none rounded-xl border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-gray-100 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 max-h-32"
                 />
                 <button
                   type="submit"
@@ -1087,7 +1090,7 @@ export function ChatDashboard() {
             if (event.target === event.currentTarget) setShowCreateModal(false)
           }}
         >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-gray-800">Nouvelle discussion</h2>
               <button type="button" onClick={() => setShowCreateModal(false)} aria-label="Fermer" className="p-1 rounded-lg hover:bg-gray-100 text-gray-500">
@@ -1105,7 +1108,7 @@ export function ChatDashboard() {
                   value={newRoomName}
                   onChange={(event) => setNewRoomName(event.target.value)}
                   placeholder="Nom du groupe"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
               <div>
@@ -1154,6 +1157,19 @@ export function ChatDashboard() {
             queryClient.invalidateQueries({ queryKey: ['rooms'] })
           }}
           onToast={push}
+        />
+      )}
+
+      {reportTarget && (
+        <ReportDialog
+          kind="message"
+          targetId={reportTarget.id}
+          targetLabel="le message"
+          onClose={() => setReportTarget(null)}
+          onReported={(message) => {
+            push(message, 'success')
+            setReportTarget(null)
+          }}
         />
       )}
 

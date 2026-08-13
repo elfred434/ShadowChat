@@ -1,10 +1,11 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCurrentUser, logoutUser } from '../api/auth';
-import { LogOut, Settings, Moon, Sun } from 'lucide-react';
+import { LogOut, Settings, Moon, ShieldCheck, Sun } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { ProfilModal } from './ProfileModal';
 import { NotificationsPanel } from './NotificationsPanel';
+import { AccountSettingsModal } from './AccountSettingsModal';
 import { useTheme } from '../hooks/themeContext';
 import { useState } from 'react';
 
@@ -12,6 +13,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [showProfileModal, setShowProfileModal] = useState(false)
+    const [showAccountModal, setShowAccountModal] = useState(false)
     const { theme, toggle } = useTheme();
 
     const { data: user, isLoading } = useQuery({
@@ -40,6 +42,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ) : user ? (
                     <div className='flex items-center space-x-2 sm:space-x-4'>
                         <NotificationsPanel />
+                        <button
+                            onClick={() => setShowAccountModal(true)}
+                            className="p-2 rounded-full hover:bg-indigo-500 dark:hover:bg-indigo-900 transition"
+                            title="Compte & sécurité"
+                            aria-label="Compte et sécurité"
+                        >
+                            <ShieldCheck size={18} />
+                        </button>
                         <button
                             onClick={toggle}
                             className="p-2 rounded-full hover:bg-indigo-500 dark:hover:bg-indigo-900 transition"
@@ -99,6 +109,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {/* MODALE DE PERSONNALISATION DE PROFIL*/}
             {showProfileModal && user && (
                 <ProfilModal user={user} onClose={() => setShowProfileModal(false)}/>
+            )}
+
+            {/* MODALE COMPTE & SÉCURITÉ (mot de passe, 2FA, sessions) */}
+            {showAccountModal && user && (
+                <AccountSettingsModal user={user} onClose={() => setShowAccountModal(false)} />
             )}
         </div>
     )

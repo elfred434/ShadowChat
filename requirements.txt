@@ -10,3 +10,8 @@ channels==4.3.2
 channels-redis==4.3.0
 daphne==4.2.3
 gunicorn==26.0.0
+# Compte & sécurité : 2FA (TOTP), observabilité, stockage objet, logs structurés
+pyotp==2.9.0
+sentry-sdk==2.32.0
+django-storages[s3]==1.14.8
+python-json-logger==3.3.0

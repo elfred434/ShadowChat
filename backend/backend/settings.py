@@ -133,6 +133,25 @@ MEDIA_URL = "/media/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ---------------------------------------------------------------------------
+# Stockage des médias : système de fichiers (défaut) ou objet S3/R2/MinIO.
+# ---------------------------------------------------------------------------
+STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "filesystem").lower()
+if STORAGE_BACKEND in {"s3", "r2", "minio"}:
+    STORAGES = {
+        "default": {"BACKEND": "storages.backends.s3.S3Storage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
+    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")
+    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME", "")
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "")
+    # Endpoint personnalisé pour Cloudflare R2 ou MinIO.
+    AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL", "")
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_QUERYSTRING_AUTH = env_bool("AWS_QUERYSTRING_AUTH", True)  # URLs signées (sécurisé)
+    MEDIA_URL = os.getenv("STORAGE_MEDIA_URL", "/media/")
+
+# ---------------------------------------------------------------------------
 # CORS / CSRF
 # ---------------------------------------------------------------------------
 # Le frontend de développement peut aussi appeler l'API directement. En
@@ -202,6 +221,53 @@ if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend":
     EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
     EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 DEFAULT_FROM_EMAIL = os.getenv("EMAIL_FROM", "ShadowChat <no-reply@example.com>")
+
+# ---------------------------------------------------------------------------
+# Observabilité : Sentry + logs structurés
+# ---------------------------------------------------------------------------
+SENTRY_DSN = os.getenv("SENTRY_DSN", "").strip()
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        send_default_pii=False,
+        environment=os.getenv("SENTRY_ENVIRONMENT", "production"),
+    )
+
+LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "INFO").upper()
+LOG_JSON = env_bool("DJANGO_LOG_JSON", not DEBUG)
+if LOG_JSON:
+    _FORMATTERS = {
+        "verbose": {
+            "()": "pythonjsonlogger.json.JsonFormatter",
+            "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
+        },
+        "simple": {"()": "pythonjsonlogger.json.JsonFormatter", "format": "%(levelname)s %(name)s %(message)s"},
+    }
+else:
+    _FORMATTERS = {
+        "verbose": {"format": "{asctime} {levelname} {name} {message}", "style": "{"},
+        "simple": {"format": "{levelname} {name} {message}", "style": "{"},
+    }
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": _FORMATTERS,
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "verbose"},
+    },
+    "root": {"handlers": ["console"], "level": LOG_LEVEL},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+        "django.request": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+        "chat": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+    },
+}
 
 # ---------------------------------------------------------------------------
 # Divers

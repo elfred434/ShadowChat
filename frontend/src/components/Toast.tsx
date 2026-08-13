@@ -11,7 +11,7 @@ export function ToastContainer({ toasts, onDismiss }: { toasts: ToastItem[]; onD
         <div
           key={toast.id}
           role="status"
-          className={`flex items-center gap-2 rounded-lg px-4 py-3 text-sm shadow-lg border text-gray-800 bg-white animate-toast-in ${
+          className={`flex items-center gap-2 rounded-lg px-4 py-3 text-sm shadow-lg border text-gray-800 dark:text-gray-100 bg-white dark:bg-slate-800 animate-toast-in ${
             toast.kind === 'success' ? 'border-green-200' : toast.kind === 'error' ? 'border-red-200' : 'border-indigo-200'
           }`}
         >

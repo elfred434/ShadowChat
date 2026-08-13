@@ -8,7 +8,7 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import type { SortingState } from "@tanstack/react-table";
-import { MessageSquare, ArrowUpDown, ArrowUp, ArrowDown, Search, Ban } from 'lucide-react';
+import { MessageSquare, ArrowUpDown, ArrowUp, ArrowDown, Search, Ban, Flag } from 'lucide-react';
 import type { User } from '../api/auth';
 import type { Friendship } from '../api/friendships';
 import { Avatar } from './Avatar';
@@ -24,12 +24,13 @@ interface FriendsTableProps {
   currentUser: User | null;
   onStartChat: (userId: number) => void;
   onBlock?: (userId: number) => void;
+  onReport?: (userId: number, username: string) => void;
 }
 
 // 1. Initialisation du helper de colonne de TanStack Table
 const columnHelper = createColumnHelper<FriendRowData>();
 
-export function FriendsTable({ friendships, currentUser, onStartChat, onBlock }: FriendsTableProps) {
+export function FriendsTable({ friendships, currentUser, onStartChat, onBlock, onReport }: FriendsTableProps) {
   // États de TanStack Table pour le tri et le filtrage
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -144,6 +145,15 @@ export function FriendsTable({ friendships, currentUser, onStartChat, onBlock }:
                 title={`Bloquer ${row.friend.username}`}
               >
                 <Ban size={14} />
+              </button>
+            )}
+            {onReport && (
+              <button
+                onClick={() => onReport(row.friend.id, row.friend.username)}
+                className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition"
+                title={`Signaler ${row.friend.username}`}
+              >
+                <Flag size={14} />
               </button>
             )}
           </div>

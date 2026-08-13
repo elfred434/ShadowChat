@@ -37,6 +37,7 @@ from .models import (
     RoomMembership,
     RoomVisit,
     UserStatus,
+    UserTOTP,
 )
 from .realtime import send_to_room_group, send_to_user
 from .serializers import (
@@ -137,7 +138,11 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         ).values_list("sender_id", "receiver_id")
         friend_ids = {person_id for pair in friendship_pairs for person_id in pair if person_id != user.id}
         # Le blocage supprime les amitiés : un ami listé ici ne peut pas être bloqué.
-        return User.objects.filter(id__in=friend_ids).select_related("profile", "status").order_by("username")
+        return (
+            User.objects.filter(id__in=friend_ids)
+            .select_related("profile", "status", "email_verification", "totp")
+            .order_by("username")
+        )
 
     def get_throttles(self):
         if self.action == "search_new_friends":
@@ -155,7 +160,11 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             "blocker_id", "blocked_id"
         )
         excluded |= {person_id for pair in blocked_pairs for person_id in pair}
-        people = User.objects.exclude(id__in=excluded).select_related("profile", "status").order_by("username")
+        people = (
+            User.objects.exclude(id__in=excluded)
+            .select_related("profile", "status", "email_verification", "totp")
+            .order_by("username")
+        )
         if query:
             people = people.filter(username__icontains=query)
         return Response(self.get_serializer(people[:20], many=True).data)
@@ -205,10 +214,15 @@ class RoomViewSet(viewsets.ModelViewSet):
             self.request.user.rooms.filter(memberships__user=self.request.user, memberships__is_banned=False)
             .exclude(archived_by=self.request.user)
             .prefetch_related(
-                Prefetch("participants", queryset=User.objects.select_related("profile", "status")),
+                Prefetch(
+                    "participants",
+                    queryset=User.objects.select_related("profile", "status", "email_verification", "totp"),
+                ),
                 Prefetch(
                     "memberships",
-                    queryset=RoomMembership.objects.select_related("user", "user__profile", "user__status"),
+                    queryset=RoomMembership.objects.select_related(
+                        "user", "user__profile", "user__status", "user__email_verification", "user__totp"
+                    ),
                 ),
             )
             .order_by("-updated_at")
@@ -330,7 +344,9 @@ class RoomViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def members(self, request, pk=None):
         room = self.get_object()
-        memberships = room.memberships.select_related("user", "user__profile", "user__status")
+        memberships = room.memberships.select_related(
+            "user", "user__profile", "user__status", "user__email_verification", "user__totp"
+        )
         return Response(RoomMembershipSerializer(memberships, many=True, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])
@@ -536,7 +552,9 @@ class RoomViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def activity(self, request, pk=None):
         room = self.get_object()
-        logs = room.activity_logs.select_related("user", "user__profile", "user__status")
+        logs = room.activity_logs.select_related(
+            "user", "user__profile", "user__status", "user__email_verification", "user__totp"
+        )
         page = self.paginate_queryset(logs)
         serializer = ActivityLogSerializer(page, many=True, context={"request": request})
         return self.get_paginated_response(serializer.data)
@@ -560,7 +578,15 @@ class MessageViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = (
             Message.objects.filter(room__memberships__user=user, room__memberships__is_banned=False)
-            .select_related("sender", "sender__profile", "sender__status", "room", "parent__sender")
+            .select_related(
+                "sender",
+                "sender__profile",
+                "sender__status",
+                "sender__email_verification",
+                "sender__totp",
+                "room",
+                "parent__sender",
+            )
             .prefetch_related("attachments", "reactions", "read_receipts")
         )
         room_id = self.request.query_params.get("room_id")
@@ -764,7 +790,16 @@ class FriendshipViewSet(viewsets.ReadOnlyModelViewSet):
         return (
             Friendships.objects.filter(Q(sender=self.request.user) | Q(receiver=self.request.user))
             .select_related(
-                "sender", "sender__profile", "sender__status", "receiver", "receiver__profile", "receiver__status"
+                "sender",
+                "sender__profile",
+                "sender__status",
+                "sender__email_verification",
+                "sender__totp",
+                "receiver",
+                "receiver__profile",
+                "receiver__status",
+                "receiver__email_verification",
+                "receiver__totp",
             )
             .order_by("-updated_at")
         )
@@ -880,6 +915,15 @@ def login_view(request):
     )
     if not user:
         return Response({"error": "Identifiants invalides."}, status=status.HTTP_400_BAD_REQUEST)
+    # Deuxième facteur (TOTP) si activé sur le compte.
+    if UserTOTP.objects.filter(user=user, is_enabled=True).exists():
+        from django.core.cache import cache
+
+        from .accounts import pending_2fa_key
+
+        pending_token = uuid.uuid4()
+        cache.set(pending_2fa_key(pending_token), user.id, timeout=300)
+        return Response({"requires_2fa": True, "token": str(pending_token)})
     login(request, user)
     return Response({"message": "Connexion réussie !", "user": UserSerializer(user, context={"request": request}).data})
 
@@ -918,6 +962,13 @@ def register_view(request):
         user = User.objects.create_user(username=username, email=email, password=password)
     except IntegrityError:
         return Response({"error": "Ce nom d'utilisateur est déjà pris."}, status=status.HTTP_400_BAD_REQUEST)
+    # Vérification d'adresse e-mail (non bloquante, e-mail envoyé en arrière-plan).
+    if user.email:
+        from .emails import send_verification_email
+        from .models import EmailVerificationToken
+
+        verification = EmailVerificationToken.objects.create(user=user)
+        send_verification_email(user, verification.token)
     login(request, user)
     return Response(
         {

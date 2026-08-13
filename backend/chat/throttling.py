@@ -56,3 +56,21 @@ class FriendRequestRateThrottle(XForwardedForUserRateThrottle):
     """Demandes d'amis : 10 par minute et par utilisateur."""
 
     rate = "10/min"
+
+
+class PasswordResetRateThrottle(XForwardedForAnonRateThrottle):
+    """Demandes de réinitialisation de mot de passe : 5 par minute et par IP."""
+
+    rate = "5/min"
+
+
+class TwoFactorRateThrottle(XForwardedForAnonRateThrottle):
+    """Vérification du code 2FA : 5 tentatives par minute et par IP."""
+
+    rate = "5/min"
+
+
+class ReportRateThrottle(XForwardedForUserRateThrottle):
+    """Signalements : 5 par minute et par utilisateur."""
+
+    rate = "5/min"

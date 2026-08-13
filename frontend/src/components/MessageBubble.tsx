@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Check, CheckCheck, CornerUpLeft, FileText, Pencil, Pin, Smile, Trash2 } from 'lucide-react'
+import { Check, CheckCheck, CornerUpLeft, FileText, Flag, Pencil, Pin, Smile, Trash2 } from 'lucide-react'
 import type { Message } from '../api/message'
 import type { User } from '../api/auth'
 import { Avatar } from './Avatar'
@@ -16,6 +16,7 @@ interface MessageBubbleProps {
   onDelete: (messageId: number) => void
   onReact: (messageId: number, emoji: string) => void
   onPinToggle: (message: Message) => void
+  onReport: (message: Message) => void
 }
 
 function formatTime(iso: string): string {
@@ -43,6 +44,7 @@ export function MessageBubble({
   onDelete,
   onReact,
   onPinToggle,
+  onReport,
 }: MessageBubbleProps) {
   const mine = message.sender.id === currentUser.id
   const [editing, setEditing] = useState(false)
@@ -70,7 +72,7 @@ export function MessageBubble({
   }
 
   return (
-    <div className={`group flex gap-2 px-4 py-1 hover:bg-gray-50 ${mine ? 'flex-row-reverse' : ''}`}>
+    <div className={`group flex gap-2 px-4 py-1 hover:bg-gray-50 dark:hover:bg-slate-800 ${mine ? 'flex-row-reverse' : ''}`}>
       <div className="w-8 shrink-0">
         {(isGroup || !mine) && showSender && <Avatar user={message.sender} size="sm" />}
       </div>
@@ -95,7 +97,7 @@ export function MessageBubble({
         <div
           id={`message-${message.id}`}
           className={`relative rounded-2xl px-3 py-2 text-sm break-words whitespace-pre-wrap shadow-sm ${
-            mine ? 'bg-indigo-600 text-white rounded-br-md' : 'bg-white text-gray-800 rounded-bl-md border border-gray-200'
+            mine ? 'bg-indigo-600 text-white rounded-br-md' : 'bg-white dark:bg-slate-700 dark:text-gray-100 rounded-bl-md border border-gray-200 dark:border-slate-600'
           } ${message.is_pinned ? 'ring-2 ring-amber-400' : ''}`}
         >
           {editing ? (
@@ -272,6 +274,17 @@ export function MessageBubble({
                     <Trash2 size={12} />
                   </button>
                 ))}
+              {!mine && (
+                <button
+                  type="button"
+                  onClick={() => onReport(message)}
+                  title="Signaler"
+                  aria-label="Signaler le message"
+                  className="p-1 rounded-full text-gray-500 hover:bg-red-50 hover:text-red-600"
+                >
+                  <Flag size={12} />
+                </button>
+              )}
             </div>
           )}
           {menuOpen && <div className="hidden" aria-hidden="true" />}

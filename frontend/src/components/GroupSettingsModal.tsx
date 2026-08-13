@@ -146,8 +146,8 @@ export function GroupSettingsModal({
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className="w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
+      <div className="w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl bg-white dark:bg-slate-800 shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-6 py-4">
           <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
             <Users size={18} className="text-indigo-600" />
             Paramètres du groupe

@@ -25,10 +25,31 @@ class UserSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
     bio = serializers.SerializerMethodField()
     status_text = serializers.SerializerMethodField()
+    email_verified = serializers.SerializerMethodField()
+    two_factor_enabled = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["id", "username", "email", "is_online", "is_typing_in", "avatar", "bio", "status_text"]
+        fields = [
+            "id",
+            "username",
+            "email",
+            "is_online",
+            "is_typing_in",
+            "avatar",
+            "bio",
+            "status_text",
+            "email_verified",
+            "two_factor_enabled",
+        ]
+
+    def get_email_verified(self, obj):
+        verification = getattr(obj, "email_verification", None)
+        return bool(verification and verification.used_at)
+
+    def get_two_factor_enabled(self, obj):
+        totp = getattr(obj, "totp", None)
+        return bool(totp and totp.is_enabled)
 
     def get_is_online(self, obj):
         status = getattr(obj, "status", None)
@@ -266,7 +287,11 @@ class RoomSerializer(serializers.ModelSerializer):
 
     def get_memberships(self, obj):
         return RoomMembershipSerializer(
-            obj.memberships.select_related("user", "user__profile", "user__status"), many=True, context=self.context
+            obj.memberships.select_related(
+                "user", "user__profile", "user__status", "user__email_verification", "user__totp"
+            ),
+            many=True,
+            context=self.context,
         ).data
 
     def get_avatar(self, obj):
@@ -278,7 +303,11 @@ class RoomSerializer(serializers.ModelSerializer):
 
     def get_last_message(self, obj):
         last_message = (
-            obj.messages.select_related("sender", "sender__profile", "sender__status").order_by("-created_at").first()
+            obj.messages.select_related(
+                "sender", "sender__profile", "sender__status", "sender__email_verification", "sender__totp"
+            )
+            .order_by("-created_at")
+            .first()
         )
         return MessageSerializer(last_message, context=self.context).data if last_message else None
 

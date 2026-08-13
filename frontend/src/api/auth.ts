@@ -8,6 +8,8 @@ export interface User{
     bio?: string;
     status_text?: string;
     avatar?: string | null;
+    email_verified?: boolean;
+    two_factor_enabled?: boolean;
 }
 
 export async function getCurrentUser(): Promise<User> {
@@ -15,9 +17,12 @@ export async function getCurrentUser(): Promise<User> {
     return response.data;
 }
 
-export async function loginUser(username: string, password: string): Promise<{user: User; message: string}> {
-    const response = await api.post('auth/login/', {username, password});
-    return response.data
+export async function loginUser(
+  username: string,
+  password: string,
+): Promise<{ requires_2fa: true; token: string } | { user: User; message: string }> {
+  const response = await api.post('auth/login/', { username, password })
+  return response.data
 }
 
 export async function logoutUser(): Promise<void> {
