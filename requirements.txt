@@ -2,3 +2,11 @@ Django==5.2.10
 django-cors-headers==4.9.0
 djangorestframework==3.16.1
 Pillow==11.3.0
+# Production : PostgreSQL, Redis, WebSockets (Channels) et serveurs
+psycopg[binary]==3.3.4
+dj-database-url==3.1.2
+django-redis==7.0.0
+channels==4.3.2
+channels-redis==4.3.0
+daphne==4.2.3
+gunicorn==26.0.0

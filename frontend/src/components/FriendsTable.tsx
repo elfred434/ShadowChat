@@ -8,7 +8,7 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import type { SortingState } from "@tanstack/react-table";
-import { MessageSquare, ArrowUpDown, ArrowUp, ArrowDown, Search } from 'lucide-react';
+import { MessageSquare, ArrowUpDown, ArrowUp, ArrowDown, Search, Ban } from 'lucide-react';
 import type { User } from '../api/auth';
 import type { Friendship } from '../api/friendships';
 import { Avatar } from './Avatar';
@@ -23,12 +23,13 @@ interface FriendsTableProps {
   friendships: Friendship[];
   currentUser: User | null;
   onStartChat: (userId: number) => void;
+  onBlock?: (userId: number) => void;
 }
 
 // 1. Initialisation du helper de colonne de TanStack Table
 const columnHelper = createColumnHelper<FriendRowData>();
 
-export function FriendsTable({ friendships, currentUser, onStartChat }: FriendsTableProps) {
+export function FriendsTable({ friendships, currentUser, onStartChat, onBlock }: FriendsTableProps) {
   // États de TanStack Table pour le tri et le filtrage
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -127,14 +128,25 @@ export function FriendsTable({ friendships, currentUser, onStartChat }: FriendsT
       cell: (info) => {
         const row = info.row.original;
         return (
-          <button
-            onClick={() => onStartChat(row.friend.id)}
-            className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm"
-            title={`Écrire à ${row.friend.username}`}
-          >
-            <MessageSquare size={14} />
-            <span>Discuter</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => onStartChat(row.friend.id)}
+              className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm"
+              title={`Écrire à ${row.friend.username}`}
+            >
+              <MessageSquare size={14} />
+              <span>Discuter</span>
+            </button>
+            {onBlock && (
+              <button
+                onClick={() => onBlock(row.friend.id)}
+                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                title={`Bloquer ${row.friend.username}`}
+              >
+                <Ban size={14} />
+              </button>
+            )}
+          </div>
         );
       },
     }),

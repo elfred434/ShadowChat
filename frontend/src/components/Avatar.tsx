@@ -3,9 +3,11 @@ import type { User } from "../api/auth";
 interface AvatarProps{
     user: User | null;
     size?: 'xs' | 'sm' | 'md' | 'lg';
+    /** État de présence en direct (WebSocket) — prioritaire sur `user.is_online`. */
+    online?: boolean | null;
 }
 
-export function Avatar({user, size = 'md' }: AvatarProps){
+export function Avatar({user, size = 'md', online = null }: AvatarProps){
     if(!user) return null
     const sizeClasses = {
         xs: 'w-6 h-6 text-[10px]',
@@ -13,6 +15,7 @@ export function Avatar({user, size = 'md' }: AvatarProps){
         md: 'w-10 h-10 text-sm',
         lg: 'w-16 h-16 text-lg font-bold',
     }
+    const isOnline = online === null ? user.is_online : online
 
     const getInitials = (username: string) =>{
         const parts = username.trim().split(' ');
@@ -57,7 +60,7 @@ export function Avatar({user, size = 'md' }: AvatarProps){
       )}
 
       {/* Point de statut en ligne/hors-ligne directement intégré sur le coin droit ! */}
-      {user.is_online && (
+      {isOnline && (
         <span className={`absolute bottom-0 right-0 rounded-full bg-emerald-500 border-2 border-white ${
           size === 'xs' ? 'w-2 h-2' : size === 'sm' ? 'w-2.5 h-2.5' : 'w-3 h-3'
         }`} />
