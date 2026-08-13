@@ -15,7 +15,7 @@ export const indexRoute = createRoute({
     beforeLoad: async () => {
         try {
             await getCurrentUser();
-        } catch (error) {
+        } catch {
 
             throw redirect({
                 to: '/login',

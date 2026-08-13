@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateProfile, type User } from "../api/auth";
+import { apiErrorMessage } from "../api/client";
 import { X, Upload, MessageSquare, BookOpen } from 'lucide-react';
 import { Avatar } from "./Avatar";
 
@@ -30,10 +31,9 @@ export function ProfilModal({ user, onClose }: ProfileModalProps) {
             queryClient.invalidateQueries({ queryKey: ['friendships'] });
             onClose();
         },
-        onError: (err: any) => {
-            setErrorMag(err.response?.data?.error || 'Erreur lors du chargement du profil.');
+        onError: (err: unknown) => {
+            setErrorMag(apiErrorMessage(err, 'Erreur lors du chargement du profil.'));
         },
-
     });
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

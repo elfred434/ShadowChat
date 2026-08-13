@@ -2,6 +2,7 @@ import React , {useState} from "react";
 import {useNavigate, Link} from '@tanstack/react-router';
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { loginUser } from "../api/auth";
+import { apiErrorMessage } from "../api/client";
 export function Login(){
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -15,8 +16,8 @@ export function Login(){
             queryClient.invalidateQueries({queryKey: ['currentUser']});
             navigate({ to: '/'});
         },
-        onError: (err: any) => {
-            setErrorMag(err.response?.data?.error || 'Erreur lors de la connexion.' );
+        onError: (err: unknown) => {
+            setErrorMag(apiErrorMessage(err, 'Erreur lors de la connexion.'));
         }
     });
 

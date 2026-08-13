@@ -1,28 +1,40 @@
-import axios from "axios";
+import axios from 'axios'
+
+const unsafeMethods = new Set(['post', 'put', 'patch', 'delete'])
 
 export const api = axios.create({
-    baseURL: 'http://localhost:8000/api/',
-    timeout: 10000,
-    headers: {
-        'Content-Type': 'application/json'
-    },
-    withCredentials: true,
+  // En développement, Vite transmet /api au backend ; en production, définir
+  // VITE_API_URL (par exemple https://api.exemple.com/api/).
+  baseURL: import.meta.env.VITE_API_URL || '/api/',
+  timeout: 10_000,
+  headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 })
 
-api.interceptors.request.use((config) => {
-    const name = 'csrftoken=';
-    const decodedCookie = decodeURIComponent(document.cookie);
-    const ca = decodedCookie.split(';');
-    let csrftoken = '';
-    for (let i = 0; i < ca.length; i++){
-        let c = ca[i].trim();
-        if (c.indexOf(name) === 0) {
-            csrftoken = c.substring(name.length, c.length);
-            break;
-        }
-    }
-    if (csrftoken && config.headers) {
-        config.headers['X-CSRFToken'] = csrftoken;
-    }
-    return config;
+function csrfToken(): string {
+  const cookie = document.cookie.split('; ').find((value) => value.startsWith('csrftoken='))
+  return cookie ? decodeURIComponent(cookie.split('=').slice(1).join('=')) : ''
+}
+
+export function apiErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError(error) && typeof error.response?.data?.error === 'string') {
+    return error.response.data.error
+  }
+  return fallback
+}
+
+let csrfRequest: Promise<void> | null = null
+async function ensureCsrfToken(): Promise<void> {
+  if (csrfToken()) return
+  csrfRequest ??= api.get('auth/csrf/').then(() => undefined).finally(() => { csrfRequest = null })
+  await csrfRequest
+}
+
+api.interceptors.request.use(async (config) => {
+  if (unsafeMethods.has((config.method || 'get').toLowerCase()) && !config.url?.includes('auth/csrf/')) {
+    await ensureCsrfToken()
+    const token = csrfToken()
+    if (token) config.headers.set('X-CSRFToken', token)
+  }
+  return config
 })

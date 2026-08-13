@@ -2,6 +2,7 @@ import  React,{ useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { registerUser } from "../api/auth";
+import { apiErrorMessage } from "../api/client";
 
 export function Register() {
     const [username, setUsername] = useState('');
@@ -24,9 +25,8 @@ export function Register() {
             queryClient.invalidateQueries({queryKey: ['currentUser']});
             navigate({to: '/'});
         },
-        onError: (err: any) => {
-            setErrorMag(err.response?.data?.error || "Erreur lors de l'inscription. Réessayez");
-
+        onError: (err: unknown) => {
+            setErrorMag(apiErrorMessage(err, "Erreur lors de l'inscription. Réessayez"));
         }
     });
 

@@ -9,10 +9,11 @@ import {
 } from '../api/friendships';
 import { getCurrentUser } from '../api/auth';
 import { getOrCreateDM } from '../api/room';
+import type { Room } from '../api/room';
 import { FriendsTable } from './FriendsTable'; // AJOUT DE L'IMPORT
 import { UserPlus, Check, X, Search, Clock, Users } from 'lucide-react';
 
-export function FriendsManager({ onStartChat }: { onStartChat: (room: any) => void }) {
+export function FriendsManager({ onStartChat }: { onStartChat: (room: Room) => void }) {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
 

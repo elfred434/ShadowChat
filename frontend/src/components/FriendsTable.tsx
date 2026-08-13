@@ -141,6 +141,8 @@ export function FriendsTable({ friendships, currentUser, onStartChat }: FriendsT
   ];
 
   // 4. Initialisation de l'instance de table de TanStack
+  // TanStack Table exposes imperative helpers; React Compiler intentionally skips memoization here.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,

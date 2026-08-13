@@ -1,7 +1,7 @@
 import { Outlet, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCurrentUser, logoutUser } from '../api/auth';
-import { LogOut, User as UserIcon, Settings } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { ProfilModal } from './ProfileModal';
 import { useState } from 'react';

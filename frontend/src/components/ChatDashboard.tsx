@@ -3,11 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRooms, createRoom, markRoomAsRead } from '../api/room';
 import type { Room } from '../api/room';
 import { getUsers } from '../api/users';
-import { getMessages, sendMessages } from '../api/message';
+import { getMessages, sendMessage } from '../api/message';
 import type { Message } from '../api/message';
 import { getCurrentUser } from '../api/auth';
 import { FriendsManager } from './FriendsManager'; // AJOUT DE L'IMPORT !
-import { MessageSquare, Plus, Users, Hash, Send, UserCheck, Search, X } from 'lucide-react';
+import { MessageSquare, Plus, Users, Send, UserCheck, Search, X } from 'lucide-react';
 import { sendHeartbeat } from '../api/auth';
 import { Avatar } from './Avatar';
 export function ChatDashboard() {
@@ -18,23 +18,8 @@ export function ChatDashboard() {
   const [newRoomName, setNewRoomName] = useState('');
   const [selectedParticipants, setSelectedParticipants] = useState<number[]>([]);
   const [messageText, setMessageText] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  useEffect(() => {
-    if (!messageText.trim()) {
-      setIsTyping(false);
-      return;
-    }
-
-    setIsTyping(true);
-
-    const timer = setTimeout(() => {
-      setIsTyping(false);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [messageText]);
 
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -47,13 +32,14 @@ export function ChatDashboard() {
   useEffect(() => {
     if (!currentUser) return;
 
-    sendHeartbeat(isTyping && activeRoom ? activeRoom.id : null).catch(() => { });
+    const typingRoomId = messageText.trim() && activeRoom ? activeRoom.id : null;
+    sendHeartbeat(typingRoomId).catch(() => { });
 
     const interval = setInterval(() => {
-      sendHeartbeat(isTyping && activeRoom ? activeRoom.id : null).catch(() => { });
+      sendHeartbeat(typingRoomId).catch(() => { });
     }, 5000);
     return () => clearInterval(interval)
-  }, [currentUser, isTyping, activeRoom]);
+  }, [currentUser, messageText, activeRoom]);
 
   const { data: rooms = [], isLoading: loadingRooms } = useQuery({
     queryKey: ['rooms'],
@@ -86,7 +72,7 @@ export function ChatDashboard() {
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: () => sendMessages(activeRoom!.id, messageText),
+    mutationFn: () => sendMessage(activeRoom!.id, messageText),
     onSuccess: (newMessage) => {
       setMessageText('');
       queryClient.setQueryData<Message[]>(['messages', activeRoom?.id], (oldMessages = []) => [
@@ -142,13 +128,13 @@ export function ChatDashboard() {
     if (activeRoom && activeTab === 'chats'){
       markReadMutation.mutate(activeRoom.id)
     }
-  }, [activeRoom?.id, activeTab]);
+  }, [activeRoom, activeTab, markReadMutation]);
 
   useEffect(() => {
     if (activeRoom && messages.length > 0){
       markRoomAsRead(activeRoom.id).catch(() => {});
     }
-  }, [messages.length, activeRoom?.id]);
+  }, [messages.length, activeRoom]);
   function highlightText(text: string, search: string){
     if(!search.trim()) return text;
 
@@ -226,8 +212,6 @@ export function ChatDashboard() {
                   const otherParticipant = !room.is_group
                     ? room.participants.find((p) => p.id !== currentUser?.id)
                     : null;
-
-                  const isOnline = otherParticipant?.is_online;
 
                   return (
                     <div
