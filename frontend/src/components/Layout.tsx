@@ -4,6 +4,7 @@ import { getCurrentUser, logoutUser } from '../api/auth';
 import { LogOut, Settings } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { ProfilModal } from './ProfileModal';
+import { NotificationsPanel } from './NotificationsPanel';
 import { useState } from 'react';
 export function Layout() {
     const navigate = useNavigate();
@@ -29,12 +30,13 @@ export function Layout() {
         <div className="flex flex-col h-screen w-screen overflow-hidden bg-gray-100 text-gray-900">
             <header className="flex items-center justify-between px-6 py-4 bg-indigo-600 text-white shadow-md">
                 <h1 className="text-xl font-bold tracking-wide">
-                    OmbreChat
+                    ShadowChat
                 </h1>
                 {isLoading ? (
                     <span className='text-sm opacity-75'>Chargement...</span>
                 ) : user ? (
                     <div className='flex items-center space-x-4'>
+                        <NotificationsPanel />
                         <button
                             onClick={() => setShowProfileModal(true)}
                             className="flex items-center space-x-2 bg-indigo-700 hover:bg-indigo-800 px-3 py-1.5 rounded-full border border-indigo-500 transition shadow-sm text-white"

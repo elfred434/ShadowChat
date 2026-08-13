@@ -2,8 +2,9 @@ import {createRootRoute, createRoute, createRouter, redirect} from '@tanstack/re
 import { Layout } from '../components/Layout';
 import {Login} from '../components/Login';
 import {ChatDashboard} from '../components/ChatDashboard';
-import { getCurrentUser } from '../api/auth';
 import { Register } from '../components/Register';
+import { JoinInvitePage } from '../components/JoinInvitePage';
+import { getCurrentUser } from '../api/auth';
 
 export const rootRoute = createRootRoute({
     component: Layout,
@@ -16,12 +17,12 @@ export const indexRoute = createRoute({
         try {
             await getCurrentUser();
         } catch {
-
-            throw redirect({
-                to: '/login',
-            })
+            throw redirect({ to: '/login' })
         }
     },
+    validateSearch: (search: Record<string, unknown>): { room?: number } => ({
+        room: typeof search.room === 'string' && search.room ? Number(search.room) : undefined,
+    }),
     component: ChatDashboard,
 })
 
@@ -37,7 +38,13 @@ export const registerRoute = createRoute({
     component: Register,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, loginRoute, registerRoute]);
+export const joinInviteRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/rejoindre/$token',
+    component: JoinInvitePage,
+});
+
+const routeTree = rootRoute.addChildren([indexRoute, loginRoute, registerRoute, joinInviteRoute]);
 
 export const router = createRouter({routeTree})
 

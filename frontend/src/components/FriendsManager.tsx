@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getFriendships,
@@ -11,11 +11,26 @@ import { getCurrentUser } from '../api/auth';
 import { getOrCreateDM } from '../api/room';
 import type { Room } from '../api/room';
 import { FriendsTable } from './FriendsTable'; // AJOUT DE L'IMPORT
-import { UserPlus, Check, X, Search, Clock, Users } from 'lucide-react';
+import { useUserSocketEvents } from '../hooks/userSocketContext';
+import { blockUser, getBlockedUsers, unblockUser } from '../api/users';
+import { UserPlus, Check, X, Search, Clock, Users, Ban } from 'lucide-react';
 
 export function FriendsManager({ onStartChat }: { onStartChat: (room: Room) => void }) {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
+  const { subscribe } = useUserSocketEvents();
+
+  // Temps réel : demande d'ami reçue/acceptée/refusée, blocage.
+  useEffect(() => {
+    return subscribe(({ event }) => {
+      if (['friendship.requested', 'friendship.accepted', 'friendship.rejected', 'user.blocked', 'user.unblocked'].includes(event)) {
+        queryClient.invalidateQueries({ queryKey: ['friendships'] });
+        queryClient.invalidateQueries({ queryKey: ['newFriendsSearch', searchQuery] });
+        queryClient.invalidateQueries({ queryKey: ['blockedUsers'] });
+        queryClient.invalidateQueries({ queryKey: ['users'] });
+      }
+    });
+  }, [subscribe, queryClient, searchQuery]);
 
   const { data: currentUser } = useQuery({
     queryKey: ['currentUser'],
@@ -25,7 +40,30 @@ export function FriendsManager({ onStartChat }: { onStartChat: (room: Room) => v
   const { data: friendships = [], isLoading } = useQuery({
     queryKey: ['friendships'],
     queryFn: getFriendships,
-    refetchInterval: 5000,
+    refetchInterval: 10_000,
+  });
+
+  const { data: blockedUsers = [] } = useQuery({
+    queryKey: ['blockedUsers'],
+    queryFn: getBlockedUsers,
+  });
+
+  const blockMutation = useMutation({
+    mutationFn: blockUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['blockedUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['friendships'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    },
+  });
+
+  const unblockMutation = useMutation({
+    mutationFn: unblockUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['blockedUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
   });
 
   const { data: searchResults = [] } = useQuery({
@@ -205,7 +243,37 @@ export function FriendsManager({ onStartChat }: { onStartChat: (room: Room) => v
             friendships={friends}
             currentUser={currentUser || null}
             onStartChat={(friendId) => startChatMutation.mutate(friendId)}
+            onBlock={(friendId) => {
+              if (window.confirm('Bloquer cet utilisateur ? L’amitié sera supprimée.')) {
+                blockMutation.mutate(friendId);
+              }
+            }}
           />
+        )}
+      </div>
+
+      {/* SECTION 5 : UTILISATEURS BLOQUÉS */}
+      <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+        <h3 className="font-semibold text-gray-800 mb-4 flex items-center space-x-1.5 border-b pb-2">
+          <Ban size={18} className="text-red-500" />
+          <span>Utilisateurs bloqués ({blockedUsers.length})</span>
+        </h3>
+        {blockedUsers.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">Aucun utilisateur bloqué.</p>
+        ) : (
+          <div className="space-y-2">
+            {blockedUsers.map(({ id, blocked }) => (
+              <div key={id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <span className="text-sm font-semibold text-gray-600">{blocked.username}</span>
+                <button
+                  onClick={() => unblockMutation.mutate(blocked.id)}
+                  className="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-200"
+                >
+                  Débloquer
+                </button>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
